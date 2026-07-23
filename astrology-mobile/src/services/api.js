@@ -1,70 +1,80 @@
-// API Service connecting Expo mobile app to Kerykeion FastAPI Backend
-
 import { Platform } from 'react-native';
 
-// Use local network IP (192.168.1.101) for physical mobile devices on Expo Go
-export const LOCAL_IP = '192.168.1.101';
+// Production Render API URL & Local Development Fallbacks
+const RENDER_API_URL = 'https://astrology-k5kd.onrender.com/api/v1';
+const LOCAL_IP_URL = 'http://192.168.1.101:8000/api/v1';
 
-export const BASE_URL = Platform.OS === 'web' 
-  ? 'http://127.0.0.1:8000' 
-  : `http://${LOCAL_IP}:8000`;
+export const API_BASE_URL = RENDER_API_URL;
 
-export async function fetchHealth() {
-  const res = await fetch(`${BASE_URL}/api/v1/health`);
-  return res.json();
+async function request(endpoint, options = {}) {
+  const url = `${API_BASE_URL}${endpoint}`;
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`API Error (${response.status}): ${errText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    // If Render instance is sleeping or unreachable, fallback to local IP
+    if (API_BASE_URL !== LOCAL_IP_URL) {
+      console.warn(`Render API unreachable (${error.message}). Retrying on local LAN: ${LOCAL_IP_URL}`);
+      const fallbackUrl = `${LOCAL_IP_URL}${endpoint}`;
+      const res = await fetch(fallbackUrl, {
+        headers: { 'Content-Type': 'application/json', ...options.headers },
+        ...options,
+      });
+      return await res.json();
+    }
+    throw error;
+  }
 }
 
 export async function fetchNatalChart(data) {
-  const res = await fetch(`${BASE_URL}/api/v1/natal-chart`, {
+  return request('/natal-chart', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Harita hesaplanamadı');
-  return res.json();
 }
 
 export async function fetchNatalSVG(data) {
-  const res = await fetch(`${BASE_URL}/api/v1/natal-chart/svg`, {
+  const url = `${API_BASE_URL}/natal-chart/svg`;
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('SVG oluşturulamadı');
-  return res.text();
+  return await response.text();
 }
 
 export async function fetchSynastryChart(data) {
-  const res = await fetch(`${BASE_URL}/api/v1/synastry-chart`, {
+  return request('/synastry-chart', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Synastry hesaplanamadı');
-  return res.json();
 }
 
 export async function fetchSynastrySVG(data) {
-  const res = await fetch(`${BASE_URL}/api/v1/synastry-chart/svg`, {
+  const url = `${API_BASE_URL}/synastry-chart/svg`;
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Synastry SVG oluşturulamadı');
-  return res.text();
+  return await response.text();
 }
 
-export async function fetchTransitChart(data) {
-  const res = await fetch(`${BASE_URL}/api/v1/transit-chart`, {
+export async function fetchAIInterpretation(data) {
+  return request('/ai-interpretation', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Transit hesaplanamadı');
-  return res.json();
-}
-
-export async function fetchHouseSystems() {
-  const res = await fetch(`${BASE_URL}/api/v1/house-systems`);
-  return res.json();
 }

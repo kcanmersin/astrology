@@ -8,9 +8,6 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
-
 # Priority Queue of Active Free Groq LLM Models
 GROQ_MODEL_QUEUE = [
     "llama-3.3-70b-versatile",
@@ -41,10 +38,13 @@ class GroqAIService:
     """Service providing AI astrological interpretations with automatic Groq model queue fallback."""
 
     def __init__(self):
-        self.client = OpenAI(
-            api_key=GROQ_API_KEY,
-            base_url=GROQ_BASE_URL
-        )
+        pass
+
+    def _get_client(self) -> OpenAI:
+        """Lazy initialization of OpenAI client using environment variables."""
+        api_key = os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY") or "dummy_key_for_startup"
+        base_url = os.getenv("GROQ_BASE_URL") or "https://api.groq.com/openai/v1"
+        return OpenAI(api_key=api_key, base_url=base_url)
 
     def generate_interpretation(self, chart_data: Dict[str, Any], chart_type: str = "Natal") -> Tuple[str, str]:
         """
@@ -52,13 +52,14 @@ class GroqAIService:
         If a model hits rate limit / error, seamlessly falls back to the next model in the queue.
         Returns Tuple[interpretation_text, model_name_used].
         """
+        client = self._get_client()
         summary_prompt = self._build_concise_prompt(chart_data, chart_type)
         last_exception = None
 
         for model_name in GROQ_MODEL_QUEUE:
             try:
                 logger.info(f"Attempting AI interpretation with model: {model_name}")
-                response = self.client.chat.completions.create(
+                response = client.chat.completions.create(
                     model=model_name,
                     messages=[
                         {"role": "system", "content": SYSTEM_PROMPT},

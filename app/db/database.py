@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./astrology.db")
+DEFAULT_NEON_DB = "postgresql://neondb_owner:npg_sw1Vo7UBQWCa@ep-cold-resonance-aythld83-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL = os.getenv("DATABASE_URL") or DEFAULT_NEON_DB
 
 # Create SQLAlchemy Engine
 engine = create_engine(
