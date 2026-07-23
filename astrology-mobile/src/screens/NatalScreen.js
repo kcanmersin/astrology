@@ -1,33 +1,38 @@
 import React, { useState } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  Alert
+  StyleSheet, Text, View, TextInput, TouchableOpacity,
+  ScrollView, ActivityIndicator, Alert, Dimensions
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchNatalChart, fetchNatalSVG, fetchAIInterpretation } from '../services/api';
 import { cleanSvgForMobile } from '../utils/svgFix';
 
-const PLANET_SYMBOLS = {
-  Sun: '☉', Moon: '☽', Mercury: '☿', Venus: '♀', Mars: '♂',
-  Jupiter: '♃', Saturn: '♄', Uranus: '♅', Neptune: '♆', Pluto: '♇',
-  Chiron: '⚷', True_Node: '☊', Mean_Node: '☊'
-};
+const { width: SCREEN_W } = Dimensions.get('window');
 
-const ZODIAC_SYMBOLS = {
+const ZODIAC_TR = {
   Ari: '♈ Koç', Tau: '♉ Boğa', Gem: '♊ İkizler', Can: '♋ Yengeç',
-  Leo: '<ctrl42> Aslan', Vir: '♍ Başak', Lib: '♎ Terazi', Sco: '♏ Akrep',
+  Leo: '♌ Aslan', Vir: '♍ Başak', Lib: '♎ Terazi', Sco: '♏ Akrep',
   Sag: '♐ Yay', Cap: '♑ Oğlak', Aqu: '♒ Kova', Pis: '♓ Balık'
 };
 
+const PLANET_EMOJI = {
+  Sun: '☉', Moon: '☽', Mercury: '☿', Venus: '♀', Mars: '♂',
+  Jupiter: '♃', Saturn: '♄', Uranus: '♅', Neptune: '♆', Pluto: '♇',
+  Chiron: '⚷', True_Node: '☊', Mean_Lilith: '⚸',
+};
+
+const PRESETS = [
+  { name: 'İstanbul', lat: 41.0082, lng: 28.9784 },
+  { name: 'Ankara',   lat: 39.9334, lng: 32.8597 },
+  { name: 'İzmir',    lat: 38.4237, lng: 27.1428 },
+  { name: 'Selanik',  lat: 40.6401, lng: 22.9444 },
+  { name: 'London',   lat: 51.5074, lng: -0.1278 },
+  { name: 'New York', lat: 40.7128, lng: -74.0060 },
+];
+
 export default function NatalScreen() {
-  const [name, setName] = useState('Ahmet Yılmaz');
+  const [name, setName] = useState('');
   const [year, setYear] = useState('1995');
   const [month, setMonth] = useState('10');
   const [day, setDay] = useState('25');
@@ -35,41 +40,25 @@ export default function NatalScreen() {
   const [minute, setMinute] = useState('30');
   const [lat, setLat] = useState('41.0082');
   const [lng, setLng] = useState('28.9784');
-  const [tz, setTz] = useState('Europe/Istanbul');
-  const [houseSys, setHouseSys] = useState('P');
+  const [selectedCity, setSelectedCity] = useState('İstanbul');
 
   const [loading, setLoading] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
   const [chartData, setChartData] = useState(null);
   const [svgXml, setSvgXml] = useState(null);
-  const [aiReport, setAiReport] = useState(null);
-  const [aiModel, setAiModel] = useState(null);
-
-  const handlePreset = (cName, cLat, cLng) => {
-    setLat(cLat.toString());
-    setLng(cLng.toString());
-  };
 
   const getPayload = () => ({
-    name,
-    year: parseInt(year),
-    month: parseInt(month),
-    day: parseInt(day),
-    hour: parseInt(hour),
-    minute: parseInt(minute),
-    city: 'PresetCity',
-    nation: 'TR',
-    lat: parseFloat(lat),
-    lng: parseFloat(lng),
-    tz_str: tz,
-    house_system: houseSys
+    name: name || 'Danışan',
+    year: parseInt(year), month: parseInt(month), day: parseInt(day),
+    hour: parseInt(hour), minute: parseInt(minute),
+    city: selectedCity, nation: 'TR',
+    lat: parseFloat(lat), lng: parseFloat(lng),
+    tz_str: 'Europe/Istanbul', house_system: 'P'
   });
 
   const handleCalculate = async () => {
     setLoading(true);
     setChartData(null);
     setSvgXml(null);
-
     try {
       const payload = getPayload();
       const [jsonRes, svgRes] = await Promise.all([
@@ -79,237 +68,217 @@ export default function NatalScreen() {
       setChartData(jsonRes.data);
       setSvgXml(cleanSvgForMobile(svgRes));
     } catch (err) {
-      Alert.alert('Hata', err.message);
+      Alert.alert('Bağlantı Hatası', err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGenerateAI = async () => {
-    setAiLoading(true);
-    setAiReport(null);
-
+  const handleSave = async () => {
     try {
-      const payload = getPayload();
-      const aiRes = await fetchAIInterpretation(payload);
-      if (aiRes.status === 'success') {
-        setAiReport(aiRes.ai_interpretation);
-        setAiModel(aiRes.model_used);
-        if (aiRes.chart_data && !chartData) {
-          setChartData(aiRes.chart_data);
-        }
-      } else {
-        Alert.alert('AI Hata', aiRes.detail || 'Analiz üretilemedi.');
-      }
-    } catch (err) {
-      Alert.alert('AI Bağlantı Hatası', err.message);
-    } finally {
-      setAiLoading(false);
-    }
+      const profile = { name: name || 'Danışan', year, month, day, hour, minute, lat, lng, city: selectedCity, savedAt: new Date().toISOString() };
+      const raw = await AsyncStorage.getItem('saved_charts');
+      const list = raw ? JSON.parse(raw) : [];
+      list.unshift(profile);
+      await AsyncStorage.setItem('saved_charts', JSON.stringify(list));
+      Alert.alert('Kaydedildi ✨', `${profile.name} profili başarıyla saklandı.`);
+    } catch { Alert.alert('Hata', 'Kaydetme başarısız.'); }
   };
 
-  const handleSaveProfile = async () => {
-    if (!name) return;
-    try {
-      const profile = { name, year, month, day, hour, minute, lat, lng, tz, houseSys };
-      const existingStr = await AsyncStorage.getItem('saved_charts');
-      const existing = existingStr ? JSON.parse(existingStr) : [];
-      existing.push(profile);
-      await AsyncStorage.setItem('saved_charts', JSON.stringify(existing));
-      Alert.alert('Başarılı', `${name} harita profili telefona kaydedildi!`);
-    } catch (err) {
-      Alert.alert('Hata', 'Profil kaydedilemedi.');
-    }
-  };
+  const subj = chartData?.subject;
+  const elDist = chartData?.element_distribution;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>🌌 Doğum Haritası (Natal)</Text>
-      <Text style={styles.subtitle}>Canlı Render API (astrology-k5kd.onrender.com)</Text>
+    <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}>
+      {/* ── Form Card ── */}
+      <View style={s.card}>
+        <Text style={s.sectionTitle}>⭐ Doğum Bilgileri</Text>
 
-      {/* Form Card */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>⭐ Kişi & Doğum Bilgileri</Text>
-        
-        <Text style={styles.label}>Ad / Etiket</Text>
-        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Ad Soyad" placeholderTextColor="#A0A5C0" />
+        <TextInput style={s.input} value={name} onChangeText={setName}
+          placeholder="Ad Soyad (isteğe bağlı)" placeholderTextColor="#475569" />
 
-        <View style={styles.row}>
-          <View style={styles.flex1}>
-            <Text style={styles.label}>Yıl</Text>
-            <TextInput style={styles.input} value={year} onChangeText={setYear} keyboardType="numeric" />
-          </View>
-          <View style={styles.flex1}>
-            <Text style={styles.label}>Ay</Text>
-            <TextInput style={styles.input} value={month} onChangeText={setMonth} keyboardType="numeric" />
-          </View>
-          <View style={styles.flex1}>
-            <Text style={styles.label}>Gün</Text>
-            <TextInput style={styles.input} value={day} onChangeText={setDay} keyboardType="numeric" />
-          </View>
+        <View style={s.row3}>
+          <Field label="Yıl"  value={year}   set={setYear} />
+          <Field label="Ay"   value={month}  set={setMonth} />
+          <Field label="Gün"  value={day}    set={setDay} />
+        </View>
+        <View style={s.row2}>
+          <Field label="Saat (0-23)" value={hour}   set={setHour} />
+          <Field label="Dakika"      value={minute} set={setMinute} />
         </View>
 
-        <View style={styles.row}>
-          <View style={styles.flex1}>
-            <Text style={styles.label}>Saat (0-23)</Text>
-            <TextInput style={styles.input} value={hour} onChangeText={setHour} keyboardType="numeric" />
-          </View>
-          <View style={styles.flex1}>
-            <Text style={styles.label}>Dakika</Text>
-            <TextInput style={styles.input} value={minute} onChangeText={setMinute} keyboardType="numeric" />
-          </View>
-        </View>
-
-        <Text style={styles.label}>Şehir Presets</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetRow}>
-          <TouchableOpacity style={styles.pill} onPress={() => handlePreset('Istanbul', 41.0082, 28.9784)}>
-            <Text style={styles.pillText}>İstanbul</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.pill} onPress={() => handlePreset('Ankara', 39.9334, 32.8597)}>
-            <Text style={styles.pillText}>Ankara</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.pill} onPress={() => handlePreset('Izmir', 38.4237, 27.1428)}>
-            <Text style={styles.pillText}>İzmir</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.pill} onPress={() => handlePreset('London', 51.5074, -0.1278)}>
-            <Text style={styles.pillText}>London</Text>
-          </TouchableOpacity>
+        <Text style={s.label}>📍 Şehir</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+          {PRESETS.map(p => (
+            <TouchableOpacity key={p.name}
+              style={[s.chip, selectedCity === p.name && s.chipActive]}
+              onPress={() => { setLat(p.lat.toString()); setLng(p.lng.toString()); setSelectedCity(p.name); }}>
+              <Text style={[s.chipText, selectedCity === p.name && s.chipTextActive]}>{p.name}</Text>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
 
-        <TouchableOpacity style={styles.btnPrimary} onPress={handleCalculate} disabled={loading || aiLoading}>
-          {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>✨ Haritayı Çiz & Hesapla</Text>}
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.btnAi} onPress={handleGenerateAI} disabled={loading || aiLoading}>
-          {aiLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>🤖 Groq AI ile Derin Analiz Yap</Text>}
+        <TouchableOpacity style={s.btnPrimary} onPress={handleCalculate} disabled={loading} activeOpacity={0.8}>
+          {loading
+            ? <ActivityIndicator color="#FFF" />
+            : <Text style={s.btnPrimaryText}>🌌  Haritayı Hesapla & Çiz</Text>}
         </TouchableOpacity>
       </View>
 
-      {/* SVG Chart Wheel Display */}
+      {/* ── SVG Wheel ── */}
       {svgXml && (
-        <View style={styles.card}>
-          <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle}>🎨 Harita Çarkı</Text>
-            <TouchableOpacity style={styles.btnSave} onPress={handleSaveProfile}>
-              <Text style={styles.btnSaveText}>💾 Kaydet</Text>
+        <View style={s.card}>
+          <View style={s.rowBetween}>
+            <Text style={s.sectionTitle}>🎨 Doğum Haritası Çarkı</Text>
+            <TouchableOpacity style={s.saveBtn} onPress={handleSave}>
+              <Text style={s.saveBtnText}>💾 Kaydet</Text>
             </TouchableOpacity>
           </View>
-
-          <View style={styles.svgWrapper}>
-            <SvgXml xml={svgXml} width="100%" height={340} />
+          <View style={s.svgBox}>
+            <SvgXml xml={svgXml} width={SCREEN_W - 64} height={SCREEN_W - 64} />
           </View>
         </View>
       )}
 
-      {/* Groq AI Report Card */}
-      {aiReport && (
-        <View style={styles.card}>
-          <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle}>🤖 Groq AI Yorumu</Text>
-            <Text style={styles.badgeText}>{aiModel}</Text>
-          </View>
-          <Text style={styles.aiReportText}>{aiReport}</Text>
-        </View>
-      )}
-
-      {/* Planet Positions Cards */}
-      {chartData && chartData.active_points && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>🪐 Gezegen Konumları & Burçlar</Text>
-          <View style={styles.planetGrid}>
-            {chartData.active_points.map((p, idx) => {
-              const symbol = PLANET_SYMBOLS[p.name] || '🪐';
-              const signName = ZODIAC_SYMBOLS[p.sign] || p.sign;
+      {/* ── Planet Grid ── */}
+      {subj && (
+        <View style={s.card}>
+          <Text style={s.sectionTitle}>🪐 Gezegen Konumları</Text>
+          <View style={s.planetGrid}>
+            {['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto','chiron','true_node'].map(key => {
+              const p = subj[key];
+              if (!p || typeof p !== 'object') return null;
+              const emoji = PLANET_EMOJI[p.name] || '🪐';
+              const sign = ZODIAC_TR[p.sign] || p.sign || '';
               return (
-                <View key={idx} style={styles.planetBadge}>
-                  <Text style={styles.planetIcon}>{symbol}</Text>
-                  <View>
-                    <Text style={styles.planetName}>{p.name} {p.retrograde ? '℞' : ''}</Text>
-                    <Text style={styles.planetSign}>{signName} {p.position ? `${p.position.toFixed(1)}°` : ''}</Text>
-                    {p.house && <Text style={styles.planetHouse}>{p.house}. Ev</Text>}
-                  </View>
+                <View key={key} style={s.planetCard}>
+                  <Text style={s.planetEmoji}>{emoji}</Text>
+                  <Text style={s.planetName}>{p.name}{p.retrograde ? ' ℞' : ''}</Text>
+                  <Text style={s.planetSign}>{sign}</Text>
+                  <Text style={s.planetDeg}>{(p.position ?? 0).toFixed(1)}°</Text>
+                  {p.house != null && <Text style={s.planetHouse}>Ev {p.house}</Text>}
                 </View>
               );
             })}
           </View>
         </View>
       )}
+
+      {/* ── Element Bars ── */}
+      {elDist && (
+        <View style={s.card}>
+          <Text style={s.sectionTitle}>🔥 Element & Nitelik Dengesi</Text>
+          <ElBar label="Ateş 🔥"   pct={elDist.fire_percentage}  color="#FF4E50" />
+          <ElBar label="Toprak 🌍" pct={elDist.earth_percentage} color="#11998e" />
+          <ElBar label="Hava 💨"   pct={elDist.air_percentage}   color="#00B4DB" />
+          <ElBar label="Su 🌊"    pct={elDist.water_percentage}  color="#8E2DE2" />
+        </View>
+      )}
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#070714' },
-  content: { padding: 16, paddingBottom: 40 },
-  title: { fontSize: 22, fontWeight: '800', color: '#FFF', textAlign: 'center', marginTop: 8 },
-  subtitle: { fontSize: 11, color: '#00DFD8', textAlign: 'center', marginBottom: 16 },
+/* ── Tiny helpers ── */
+function Field({ label, value, set }) {
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={s.label}>{label}</Text>
+      <TextInput style={s.input} value={value} onChangeText={set} keyboardType="numeric" />
+    </View>
+  );
+}
+
+function ElBar({ label, pct, color }) {
+  const w = Math.max(pct ?? 0, 2);
+  return (
+    <View style={{ marginBottom: 10 }}>
+      <View style={s.barHeader}>
+        <Text style={s.barLabel}>{label}</Text>
+        <Text style={s.barPct}>{pct ?? 0}%</Text>
+      </View>
+      <View style={s.barTrack}>
+        <View style={[s.barFill, { width: `${w}%`, backgroundColor: color }]} />
+      </View>
+    </View>
+  );
+}
+
+/* ── Styles ── */
+const s = StyleSheet.create({
+  scroll: { flex: 1, backgroundColor: '#05051A' },
+  scrollContent: { padding: 14, paddingBottom: 32 },
+
   card: {
-    backgroundColor: 'rgba(18, 18, 42, 0.85)',
-    borderRadius: 20,
+    backgroundColor: 'rgba(14,14,38,0.92)',
+    borderRadius: 18,
     padding: 16,
+    marginBottom: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    marginBottom: 16
+    borderColor: 'rgba(255,255,255,0.07)',
   },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#FFD700', marginBottom: 12 },
-  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  badgeText: { color: '#00DFD8', fontSize: 11, fontWeight: '700', backgroundColor: 'rgba(0,223,216,0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  label: { fontSize: 11, fontWeight: '600', color: '#A0A5C0', textTransform: 'uppercase', marginTop: 8, marginBottom: 4 },
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: '#FFD700', marginBottom: 12, letterSpacing: 0.3 },
+
+  label: { fontSize: 10, fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 6, marginBottom: 3 },
   input: {
-    backgroundColor: 'rgba(7, 7, 20, 0.9)',
+    backgroundColor: '#0F0F2E',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 10,
-    padding: 10,
-    color: '#FFF',
-    fontSize: 14
-  },
-  row: { flexDirection: 'row', gap: 8 },
-  flex1: { flex: 1 },
-  presetRow: { marginVertical: 8, flexDirection: 'row' },
-  pill: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 6
+    paddingVertical: 10,
+    color: '#F1F5F9',
+    fontSize: 14,
   },
-  pillText: { color: '#00DFD8', fontSize: 12, fontWeight: '600' },
-  btnPrimary: {
-    backgroundColor: '#7928CA',
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 16
-  },
-  btnAi: {
-    backgroundColor: '#FF0080',
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 10
-  },
-  btnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
-  btnSave: { backgroundColor: 'rgba(255, 215, 0, 0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  btnSaveText: { color: '#FFD700', fontSize: 12, fontWeight: '700' },
-  svgWrapper: { alignItems: 'center', marginVertical: 8, backgroundColor: '#070714', borderRadius: 16, padding: 8 },
-  planetGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  planetBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(7, 7, 20, 0.8)',
-    padding: 8,
-    borderRadius: 12,
+  row3: { flexDirection: 'row', gap: 8 },
+  row2: { flexDirection: 'row', gap: 8 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    minWidth: '47%'
+    borderColor: 'rgba(255,255,255,0.08)',
+    marginRight: 6,
   },
-  planetIcon: { fontSize: 20, color: '#FFD700' },
-  planetName: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-  planetSign: { color: '#00DFD8', fontSize: 11 },
-  planetHouse: { color: '#A0A5C0', fontSize: 10 },
-  aiReportText: { color: '#F0F4F8', fontSize: 13, lineHeight: 20, marginTop: 8 }
+  chipActive: { backgroundColor: 'rgba(0,223,216,0.15)', borderColor: '#00DFD8' },
+  chipText: { color: '#94A3B8', fontSize: 12, fontWeight: '600' },
+  chipTextActive: { color: '#00DFD8' },
+
+  btnPrimary: {
+    marginTop: 16,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    backgroundColor: '#7928CA',
+  },
+  btnPrimaryText: { color: '#FFF', fontSize: 15, fontWeight: '800', letterSpacing: 0.3 },
+
+  saveBtn: { backgroundColor: 'rgba(255,215,0,0.12)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10 },
+  saveBtnText: { color: '#FFD700', fontSize: 11, fontWeight: '700' },
+
+  svgBox: { alignItems: 'center', marginTop: 8, backgroundColor: '#05051A', borderRadius: 14, padding: 6 },
+
+  planetGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  planetCard: {
+    alignItems: 'center',
+    width: (SCREEN_W - 28 - 16 - 24) / 4,
+    backgroundColor: '#0F0F2E',
+    borderRadius: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  planetEmoji: { fontSize: 22, marginBottom: 2 },
+  planetName: { color: '#F1F5F9', fontSize: 10, fontWeight: '700' },
+  planetSign: { color: '#00DFD8', fontSize: 9, marginTop: 1 },
+  planetDeg: { color: '#94A3B8', fontSize: 9 },
+  planetHouse: { color: '#FFD700', fontSize: 8, fontWeight: '700', marginTop: 1 },
+
+  barHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
+  barLabel: { color: '#CBD5E1', fontSize: 12 },
+  barPct: { color: '#94A3B8', fontSize: 12, fontWeight: '700' },
+  barTrack: { height: 7, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 4 },
+  barFill: { height: 7, borderRadius: 4 },
 });

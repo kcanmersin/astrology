@@ -1,7 +1,12 @@
-// Helper function to resolve CSS var(...) inside SVG strings for React Native SVG
+// Cleans CSS var(...) references from Kerykeion SVG output for React Native SVG compatibility.
+// Handles both single-line var(--name) and multi-line var(\n  --name\n) patterns.
 
 export function cleanSvgForMobile(svgStr) {
   if (!svgStr) return '';
+
+  // Step 1: Normalize multi-line var() into single-line var()
+  // Kerykeion sometimes outputs: var(\n        --kerykeion-chart-color-fire-percentage\n    )
+  let cleaned = svgStr.replace(/var\(\s*(--[a-z0-9-_]+)\s*\)/gi, 'var($1)');
 
   const colorMap = {
     'var(--kerykeion-chart-color-paper-0)': '#0A0A1E',
@@ -19,6 +24,7 @@ export function cleanSvgForMobile(svgStr) {
     'var(--kerykeion-chart-color-chiron)': '#10B981',
     'var(--kerykeion-chart-color-true-node)': '#EAB308',
     'var(--kerykeion-chart-color-mean-node)': '#EAB308',
+    'var(--kerykeion-chart-color-mean-lilith)': '#C084FC',
     'var(--kerykeion-chart-color-first-house)': '#FFD700',
     'var(--kerykeion-chart-color-fourth-house)': '#3B82F6',
     'var(--kerykeion-chart-color-seventh-house)': '#F472B6',
@@ -35,23 +41,28 @@ export function cleanSvgForMobile(svgStr) {
     'var(--kerykeion-chart-color-trine)': '#3B82F6',
     'var(--kerykeion-chart-color-square)': '#F97316',
     'var(--kerykeion-chart-color-sextile)': '#8B5CF6',
+    'var(--kerykeion-chart-color-quintile)': '#A78BFA',
+    'var(--kerykeion-chart-color-semi-sextile)': '#6EE7B7',
+    'var(--kerykeion-chart-color-semi-square)': '#FBBF24',
+    'var(--kerykeion-chart-color-sesquiquadrate)': '#FB923C',
+    'var(--kerykeion-chart-color-biquintile)': '#C4B5FD',
+    'var(--kerykeion-chart-color-quincunx)': '#F9A8D4',
+    'var(--kerykeion-chart-color-house-number)': '#94A3B8',
+    'var(--kerykeion-chart-color-houses-radix-line)': '#475569',
   };
 
-  let cleaned = svgStr;
-
-  // Extract variables from style tag if any
+  // Extract inline style definitions
   const styleMatches = [...cleaned.matchAll(/(--kerykeion-chart-color-[a-z0-9-_]+)\s*:\s*([^;\}]+);/g)];
   for (const match of styleMatches) {
     colorMap[`var(${match[1]})`] = match[2].trim();
   }
 
-  // Replace all var(...)
   for (const [varName, colorVal] of Object.entries(colorMap)) {
     cleaned = cleaned.replaceAll(varName, colorVal);
   }
 
   // Catch any remaining var(--...)
-  cleaned = cleaned.replace(/var\(--[a-z0-9-_]+\)/g, '#94A3B8');
+  cleaned = cleaned.replace(/var\(--[a-z0-9-_]+\)/gi, '#94A3B8');
 
   return cleaned;
 }
