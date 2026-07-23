@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kerykeion Astrology Engine - AI & Swiss Ephemeris</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="stars-bg"></div>
+    
+    <header class="app-header">
+        <div class="logo">
+            <span class="sparkle">✨</span> KERYKEION <span class="badge">AI Engine</span>
+        </div>
+        <p class="subtitle">Swiss Ephemeris NASA Doğruluğu & Groq LLM Otomatik Model Fallback</p>
+        <div class="nav-links">
+            <a href="/docs" target="_blank" class="nav-btn">Swagger Docs</a>
+            <a href="/redoc" target="_blank" class="nav-btn">ReDoc</a>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Input Form Section -->
+        <section class="card input-section">
+            <h2>🔮 Doğum Bilgileri Girişi</h2>
+            <form id="natal-form">
+                <div class="form-group">
+                    <label for="name">Ad / Etiket</label>
+                    <input type="text" id="name" value="Mustafa Kemal Atatürk" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="year">Yıl</label>
+                        <input type="number" id="year" value="1881" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="month">Ay</label>
+                        <input type="number" id="month" value="5" min="1" max="12" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="day">Gün</label>
+                        <input type="number" id="day" value="19" min="1" max="31" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="hour">Saat (0-23)</label>
+                        <input type="number" id="hour" value="12" min="0" max="23" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="minute">Dakika</label>
+                        <input type="number" id="minute" value="0" min="0" max="59" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Hızlı Şehir Seçimi (Preset)</label>
+                    <div class="preset-buttons">
+                        <button type="button" class="preset-btn" data-lat="41.0082" data-lng="28.9784" data-city="Istanbul" data-tz="Europe/Istanbul">İstanbul</button>
+                        <button type="button" class="preset-btn" data-lat="39.9334" data-lng="32.8597" data-city="Ankara" data-tz="Europe/Istanbul">Ankara</button>
+                        <button type="button" class="preset-btn" data-lat="38.4237" data-lng="27.1428" data-city="Izmir" data-tz="Europe/Istanbul">İzmir</button>
+                        <button type="button" class="preset-btn" data-lat="40.6401" data-lng="22.9444" data-city="Thessaloniki" data-tz="Europe/Athens">Selanik</button>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="lat">Enlem (Latitude)</label>
+                        <input type="number" step="any" id="lat" value="40.6401" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lng">Boylam (Longitude)</label>
+                        <input type="number" step="any" id="lng" value="22.9444" required>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary" id="btn-calc">
+                        <span class="icon">🌌</span> Haritayı Çiz & Hesapla
+                    </button>
+                    <button type="button" class="btn btn-ai" id="btn-ai">
+                        <span class="icon">🤖</span> Groq AI ile Derin Analiz Üret
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- SVG Output Section -->
+        <section class="card output-section">
+            <h2>🎨 Doğum Haritası Çarkı</h2>
+            <div id="svg-container" class="svg-wrapper">
+                <p class="placeholder-text">Harita çizdirmek için bilgileri girip tıklayın...</p>
+            </div>
+        </section>
+
+        <!-- AI Output Section -->
+        <section class="card ai-section" id="ai-card" style="display: none;">
+            <div class="ai-header">
+                <h2>🤖 Groq LLM Astroloji Analizi</h2>
+                <span class="ai-badge" id="ai-model-badge">Llama-3.3-70B</span>
+            </div>
+            <div id="ai-output" class="ai-text-box"></div>
+        </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

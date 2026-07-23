@@ -1,0 +1,25 @@
+# Virtual Environments
+.venv/
+venv/
+ENV/
+
+# Environment Variables Secrets
+.env
+*.env
+
+# Python Caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Node & Mobile Dependencies
+node_modules/
+astrology-mobile/node_modules/
+astrology-mobile/.expo/
+astrology-mobile/dist/
+
+# OS Files
+.DS_Store
+Thumbs.db
