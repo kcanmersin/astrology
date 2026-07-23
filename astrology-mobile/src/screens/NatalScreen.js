@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchNatalChart, fetchNatalSVG } from '../services/api';
+import { fetchNatalChart, fetchNatalSVG, fetchAIInterpretation } from '../services/api';
 import { cleanSvgForMobile } from '../utils/svgFix';
 
 const PLANET_SYMBOLS = {
@@ -22,7 +22,7 @@ const PLANET_SYMBOLS = {
 
 const ZODIAC_SYMBOLS = {
   Ari: '♈ Koç', Tau: '♉ Boğa', Gem: '♊ İkizler', Can: '♋ Yengeç',
-  Leo: '♌ Aslan', Vir: '♍ Başak', Lib: '♎ Terazi', Sco: '♏ Akrep',
+  Leo: '<ctrl42> Aslan', Vir: '♍ Başak', Lib: '♎ Terazi', Sco: '♏ Akrep',
   Sag: '♐ Yay', Cap: '♑ Oğlak', Aqu: '♒ Kova', Pis: '♓ Balık'
 };
 
@@ -39,35 +39,39 @@ export default function NatalScreen() {
   const [houseSys, setHouseSys] = useState('P');
 
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [chartData, setChartData] = useState(null);
   const [svgXml, setSvgXml] = useState(null);
+  const [aiReport, setAiReport] = useState(null);
+  const [aiModel, setAiModel] = useState(null);
 
   const handlePreset = (cName, cLat, cLng) => {
     setLat(cLat.toString());
     setLng(cLng.toString());
   };
 
+  const getPayload = () => ({
+    name,
+    year: parseInt(year),
+    month: parseInt(month),
+    day: parseInt(day),
+    hour: parseInt(hour),
+    minute: parseInt(minute),
+    city: 'PresetCity',
+    nation: 'TR',
+    lat: parseFloat(lat),
+    lng: parseFloat(lng),
+    tz_str: tz,
+    house_system: houseSys
+  });
+
   const handleCalculate = async () => {
     setLoading(true);
     setChartData(null);
     setSvgXml(null);
 
-    const payload = {
-      name,
-      year: parseInt(year),
-      month: parseInt(month),
-      day: parseInt(day),
-      hour: parseInt(hour),
-      minute: parseInt(minute),
-      city: 'PresetCity',
-      nation: 'TR',
-      lat: parseFloat(lat),
-      lng: parseFloat(lng),
-      tz_str: tz,
-      house_system: houseSys
-    };
-
     try {
+      const payload = getPayload();
       const [jsonRes, svgRes] = await Promise.all([
         fetchNatalChart(payload),
         fetchNatalSVG(payload)
@@ -78,6 +82,29 @@ export default function NatalScreen() {
       Alert.alert('Hata', err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerateAI = async () => {
+    setAiLoading(true);
+    setAiReport(null);
+
+    try {
+      const payload = getPayload();
+      const aiRes = await fetchAIInterpretation(payload);
+      if (aiRes.status === 'success') {
+        setAiReport(aiRes.ai_interpretation);
+        setAiModel(aiRes.model_used);
+        if (aiRes.chart_data && !chartData) {
+          setChartData(aiRes.chart_data);
+        }
+      } else {
+        Alert.alert('AI Hata', aiRes.detail || 'Analiz üretilemedi.');
+      }
+    } catch (err) {
+      Alert.alert('AI Bağlantı Hatası', err.message);
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -98,7 +125,7 @@ export default function NatalScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>🌌 Doğum Haritası (Natal)</Text>
-      <Text style={styles.subtitle}>Swiss Ephemeris ile Yüksek Hassasiyetli Hesaplama</Text>
+      <Text style={styles.subtitle}>Canlı Render API (astrology-k5kd.onrender.com)</Text>
 
       {/* Form Card */}
       <View style={styles.card}>
@@ -149,8 +176,12 @@ export default function NatalScreen() {
           </TouchableOpacity>
         </ScrollView>
 
-        <TouchableOpacity style={styles.btnPrimary} onPress={handleCalculate} disabled={loading}>
-          {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>✨ Haritayı Hesapla & Çiz</Text>}
+        <TouchableOpacity style={styles.btnPrimary} onPress={handleCalculate} disabled={loading || aiLoading}>
+          {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>✨ Haritayı Çiz & Hesapla</Text>}
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.btnAi} onPress={handleGenerateAI} disabled={loading || aiLoading}>
+          {aiLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>🤖 Groq AI ile Derin Analiz Yap</Text>}
         </TouchableOpacity>
       </View>
 
@@ -167,6 +198,17 @@ export default function NatalScreen() {
           <View style={styles.svgWrapper}>
             <SvgXml xml={svgXml} width="100%" height={340} />
           </View>
+        </View>
+      )}
+
+      {/* Groq AI Report Card */}
+      {aiReport && (
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardTitle}>🤖 Groq AI Yorumu</Text>
+            <Text style={styles.badgeText}>{aiModel}</Text>
+          </View>
+          <Text style={styles.aiReportText}>{aiReport}</Text>
         </View>
       )}
 
@@ -192,26 +234,6 @@ export default function NatalScreen() {
           </View>
         </View>
       )}
-
-      {/* Element Balance Bars */}
-      {chartData && chartData.element_distribution && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>🔥 Element Dengesi</Text>
-          <View style={styles.barContainer}>
-            <Text style={styles.barLabel}>Ateş 🔥: {chartData.element_distribution.fire_percentage}%</Text>
-            <View style={[styles.barFill, { width: `${chartData.element_distribution.fire_percentage}%`, backgroundColor: '#FF4E50' }]} />
-
-            <Text style={styles.barLabel}>Toprak 🌍: {chartData.element_distribution.earth_percentage}%</Text>
-            <View style={[styles.barFill, { width: `${chartData.element_distribution.earth_percentage}%`, backgroundColor: '#11998e' }]} />
-
-            <Text style={styles.barLabel}>Hava 💨: {chartData.element_distribution.air_percentage}%</Text>
-            <View style={[styles.barFill, { width: `${chartData.element_distribution.air_percentage}%`, backgroundColor: '#00B4DB' }]} />
-
-            <Text style={styles.barLabel}>Su 🌊: {chartData.element_distribution.water_percentage}%</Text>
-            <View style={[styles.barFill, { width: `${chartData.element_distribution.water_percentage}%`, backgroundColor: '#8E2DE2' }]} />
-          </View>
-        </View>
-      )}
     </ScrollView>
   );
 }
@@ -220,7 +242,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#070714' },
   content: { padding: 16, paddingBottom: 40 },
   title: { fontSize: 22, fontWeight: '800', color: '#FFF', textAlign: 'center', marginTop: 8 },
-  subtitle: { fontSize: 12, color: '#00DFD8', textAlign: 'center', marginBottom: 16 },
+  subtitle: { fontSize: 11, color: '#00DFD8', textAlign: 'center', marginBottom: 16 },
   card: {
     backgroundColor: 'rgba(18, 18, 42, 0.85)',
     borderRadius: 20,
@@ -231,6 +253,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 16, fontWeight: '700', color: '#FFD700', marginBottom: 12 },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  badgeText: { color: '#00DFD8', fontSize: 11, fontWeight: '700', backgroundColor: 'rgba(0,223,216,0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   label: { fontSize: 11, fontWeight: '600', color: '#A0A5C0', textTransform: 'uppercase', marginTop: 8, marginBottom: 4 },
   input: {
     backgroundColor: 'rgba(7, 7, 20, 0.9)',
@@ -261,6 +284,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 16
   },
+  btnAi: {
+    backgroundColor: '#FF0080',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 10
+  },
   btnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
   btnSave: { backgroundColor: 'rgba(255, 215, 0, 0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   btnSaveText: { color: '#FFD700', fontSize: 12, fontWeight: '700' },
@@ -281,7 +311,5 @@ const styles = StyleSheet.create({
   planetName: { color: '#FFF', fontSize: 12, fontWeight: '700' },
   planetSign: { color: '#00DFD8', fontSize: 11 },
   planetHouse: { color: '#A0A5C0', fontSize: 10 },
-  barContainer: { gap: 4, marginTop: 8 },
-  barLabel: { color: '#FFF', fontSize: 12, marginTop: 4 },
-  barFill: { height: 8, borderRadius: 4 }
+  aiReportText: { color: '#F0F4F8', fontSize: 13, lineHeight: 20, marginTop: 8 }
 });

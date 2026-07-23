@@ -1,10 +1,5 @@
-import { Platform } from 'react-native';
-
-// Production Render API URL & Local Development Fallbacks
-const RENDER_API_URL = 'https://astrology-k5kd.onrender.com/api/v1';
-const LOCAL_IP_URL = 'http://192.168.1.101:8000/api/v1';
-
-export const API_BASE_URL = RENDER_API_URL;
+// Production Render Live API URL
+export const API_BASE_URL = 'https://astrology-k5kd.onrender.com/api/v1';
 
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
@@ -24,16 +19,7 @@ async function request(endpoint, options = {}) {
 
     return await response.json();
   } catch (error) {
-    // If Render instance is sleeping or unreachable, fallback to local IP
-    if (API_BASE_URL !== LOCAL_IP_URL) {
-      console.warn(`Render API unreachable (${error.message}). Retrying on local LAN: ${LOCAL_IP_URL}`);
-      const fallbackUrl = `${LOCAL_IP_URL}${endpoint}`;
-      const res = await fetch(fallbackUrl, {
-        headers: { 'Content-Type': 'application/json', ...options.headers },
-        ...options,
-      });
-      return await res.json();
-    }
+    console.error(`API Call failed (${url}):`, error);
     throw error;
   }
 }
@@ -52,6 +38,9 @@ export async function fetchNatalSVG(data) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
+  if (!response.ok) {
+    throw new Error(`SVG Fetch failed with status ${response.status}`);
+  }
   return await response.text();
 }
 
@@ -69,6 +58,9 @@ export async function fetchSynastrySVG(data) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
+  if (!response.ok) {
+    throw new Error(`Synastry SVG Fetch failed with status ${response.status}`);
+  }
   return await response.text();
 }
 
