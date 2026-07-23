@@ -7,10 +7,10 @@ import AIScreen from './src/screens/AIScreen';
 import SavedScreen from './src/screens/SavedScreen';
 
 const TABS = [
-  { key: 'natal',    icon: '🌌', label: 'Natal' },
-  { key: 'synastry', icon: '💞', label: 'Uyum' },
-  { key: 'ai',       icon: '🤖', label: 'AI Yorum' },
-  { key: 'saved',    icon: '💾', label: 'Kayıtlar' },
+  { key: 'natal',    label: 'Natal' },
+  { key: 'synastry', label: 'Uyum' },
+  { key: 'ai',       label: 'AI Yorum' },
+  { key: 'saved',    label: 'Kayıtlar' },
 ];
 
 export default function App() {
@@ -28,35 +28,38 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor="#05051A" />
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor="#09090B" />
+      <SafeAreaView style={styles.root} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerLogo}>✨ KERYKEION</Text>
-          <Text style={styles.headerBadge}>AI ENGINE</Text>
+          <Text style={styles.brand}>KERYKEION</Text>
+          <View style={styles.tagRow}>
+            <View style={styles.tag}>
+              <Text style={styles.tagText}>Swiss Ephemeris</Text>
+            </View>
+            <View style={[styles.tag, styles.tagAccent]}>
+              <Text style={[styles.tagText, styles.tagAccentText]}>AI</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Main Content */}
-        <View style={styles.content}>
-          {renderScreen()}
-        </View>
+        {/* Content */}
+        <View style={styles.content}>{renderScreen()}</View>
 
-        {/* Bottom Tab Bar */}
+        {/* Tab Bar */}
         <View style={styles.tabBar}>
           {TABS.map((tab) => {
-            const isActive = activeTab === tab.key;
+            const active = activeTab === tab.key;
             return (
               <TouchableOpacity
                 key={tab.key}
-                style={[styles.tabItem, isActive && styles.tabActive]}
+                style={[styles.tab, active && styles.tabActive]}
                 onPress={() => setActiveTab(tab.key)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.tabIcon}>{tab.icon}</Text>
-                <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>
                   {tab.label}
                 </Text>
-                {isActive && <View style={styles.tabDot} />}
               </TouchableOpacity>
             );
           })}
@@ -67,60 +70,59 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#05051A' },
+  root: { flex: 1, backgroundColor: '#09090B' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: '#1C1C22',
   },
-  headerLogo: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#FFD700',
-    letterSpacing: 2,
-  },
-  headerBadge: {
-    fontSize: 9,
+  brand: {
+    fontSize: 16,
     fontWeight: '800',
-    color: '#05051A',
-    backgroundColor: '#00DFD8',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    letterSpacing: 1,
-    overflow: 'hidden',
+    color: '#FAFAFA',
+    letterSpacing: 3,
   },
+  tagRow: { flexDirection: 'row', gap: 6 },
+  tag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    backgroundColor: '#1C1C22',
+  },
+  tagText: { fontSize: 9, fontWeight: '700', color: '#71717A', letterSpacing: 0.5 },
+  tagAccent: { backgroundColor: '#7C3AED' },
+  tagAccentText: { color: '#FAFAFA' },
+
   content: { flex: 1 },
+
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#0A0A24',
+    backgroundColor: '#09090B',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
-    paddingBottom: 6,
-    paddingTop: 6,
-    paddingHorizontal: 8,
+    borderTopColor: '#1C1C22',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
-  tabItem: {
+  tab: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 6,
-    borderRadius: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   tabActive: {
-    backgroundColor: 'rgba(121, 40, 202, 0.15)',
+    backgroundColor: '#18181B',
   },
-  tabIcon: { fontSize: 20, marginBottom: 2 },
-  tabLabel: { fontSize: 10, fontWeight: '600', color: '#64748B' },
-  tabLabelActive: { color: '#FFD700', fontWeight: '800' },
-  tabDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#FFD700',
-    marginTop: 3,
+  tabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#52525B',
+  },
+  tabTextActive: {
+    color: '#FAFAFA',
+    fontWeight: '700',
   },
 });

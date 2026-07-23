@@ -19,10 +19,16 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#070714"
-      }
+      },
+      "package": "com.kcanmersin.astrologymobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "67a2fe1e-66b6-4566-bd26-fed6904c3141"
+      }
     }
   }
 }

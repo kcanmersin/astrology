@@ -5,30 +5,30 @@ import {
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchNatalChart, fetchNatalSVG, fetchAIInterpretation } from '../services/api';
+import { fetchNatalChart, fetchNatalSVG } from '../services/api';
 import { cleanSvgForMobile } from '../utils/svgFix';
 
-const { width: SCREEN_W } = Dimensions.get('window');
+const { width: SW } = Dimensions.get('window');
 
-const ZODIAC_TR = {
-  Ari: '♈ Koç', Tau: '♉ Boğa', Gem: '♊ İkizler', Can: '♋ Yengeç',
-  Leo: '♌ Aslan', Vir: '♍ Başak', Lib: '♎ Terazi', Sco: '♏ Akrep',
-  Sag: '♐ Yay', Cap: '♑ Oğlak', Aqu: '♒ Kova', Pis: '♓ Balık'
+const ZODIAC = {
+  Ari: 'Koç', Tau: 'Boğa', Gem: 'İkizler', Can: 'Yengeç',
+  Leo: 'Aslan', Vir: 'Başak', Lib: 'Terazi', Sco: 'Akrep',
+  Sag: 'Yay', Cap: 'Oğlak', Aqu: 'Kova', Pis: 'Balık',
 };
 
-const PLANET_EMOJI = {
+const PLANET_SYMBOLS = {
   Sun: '☉', Moon: '☽', Mercury: '☿', Venus: '♀', Mars: '♂',
   Jupiter: '♃', Saturn: '♄', Uranus: '♅', Neptune: '♆', Pluto: '♇',
   Chiron: '⚷', True_Node: '☊', Mean_Lilith: '⚸',
 };
 
-const PRESETS = [
+const CITIES = [
   { name: 'İstanbul', lat: 41.0082, lng: 28.9784 },
   { name: 'Ankara',   lat: 39.9334, lng: 32.8597 },
   { name: 'İzmir',    lat: 38.4237, lng: 27.1428 },
   { name: 'Selanik',  lat: 40.6401, lng: 22.9444 },
   { name: 'London',   lat: 51.5074, lng: -0.1278 },
-  { name: 'New York', lat: 40.7128, lng: -74.0060 },
+  { name: 'New York', lat: 40.7128, lng: -74.006 },
 ];
 
 export default function NatalScreen() {
@@ -40,123 +40,122 @@ export default function NatalScreen() {
   const [minute, setMinute] = useState('30');
   const [lat, setLat] = useState('41.0082');
   const [lng, setLng] = useState('28.9784');
-  const [selectedCity, setSelectedCity] = useState('İstanbul');
-
+  const [city, setCity] = useState('İstanbul');
   const [loading, setLoading] = useState(false);
   const [chartData, setChartData] = useState(null);
   const [svgXml, setSvgXml] = useState(null);
 
-  const getPayload = () => ({
-    name: name || 'Danışan',
-    year: parseInt(year), month: parseInt(month), day: parseInt(day),
-    hour: parseInt(hour), minute: parseInt(minute),
-    city: selectedCity, nation: 'TR',
+  const payload = () => ({
+    name: name || 'Danışan', year: +year, month: +month, day: +day,
+    hour: +hour, minute: +minute, city, nation: 'TR',
     lat: parseFloat(lat), lng: parseFloat(lng),
-    tz_str: 'Europe/Istanbul', house_system: 'P'
+    tz_str: 'Europe/Istanbul', house_system: 'P',
   });
 
-  const handleCalculate = async () => {
-    setLoading(true);
-    setChartData(null);
-    setSvgXml(null);
+  const calculate = async () => {
+    setLoading(true); setChartData(null); setSvgXml(null);
     try {
-      const payload = getPayload();
-      const [jsonRes, svgRes] = await Promise.all([
-        fetchNatalChart(payload),
-        fetchNatalSVG(payload)
+      const [json, svg] = await Promise.all([
+        fetchNatalChart(payload()), fetchNatalSVG(payload()),
       ]);
-      setChartData(jsonRes.data);
-      setSvgXml(cleanSvgForMobile(svgRes));
-    } catch (err) {
-      Alert.alert('Bağlantı Hatası', err.message);
-    } finally {
-      setLoading(false);
-    }
+      setChartData(json.data);
+      setSvgXml(cleanSvgForMobile(svg));
+    } catch (e) { Alert.alert('Hata', e.message); }
+    finally { setLoading(false); }
   };
 
-  const handleSave = async () => {
+  const save = async () => {
     try {
-      const profile = { name: name || 'Danışan', year, month, day, hour, minute, lat, lng, city: selectedCity, savedAt: new Date().toISOString() };
+      const p = { name: name || 'Danışan', year, month, day, hour, minute, lat, lng, city, savedAt: new Date().toISOString() };
       const raw = await AsyncStorage.getItem('saved_charts');
       const list = raw ? JSON.parse(raw) : [];
-      list.unshift(profile);
+      list.unshift(p);
       await AsyncStorage.setItem('saved_charts', JSON.stringify(list));
-      Alert.alert('Kaydedildi ✨', `${profile.name} profili başarıyla saklandı.`);
+      Alert.alert('Kaydedildi', `${p.name} profili kayıtlara eklendi.`);
     } catch { Alert.alert('Hata', 'Kaydetme başarısız.'); }
   };
 
   const subj = chartData?.subject;
-  const elDist = chartData?.element_distribution;
+  const el = chartData?.element_distribution;
 
   return (
-    <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}>
-      {/* ── Form Card ── */}
-      <View style={s.card}>
-        <Text style={s.sectionTitle}>⭐ Doğum Bilgileri</Text>
+    <ScrollView style={t.bg} contentContainerStyle={t.pad}>
+      {/* ── Form ── */}
+      <View style={t.section}>
+        <Text style={t.heading}>Doğum Bilgileri</Text>
+        <Text style={t.desc}>Haritanızı oluşturmak için doğum detaylarını girin.</Text>
 
-        <TextInput style={s.input} value={name} onChangeText={setName}
-          placeholder="Ad Soyad (isteğe bağlı)" placeholderTextColor="#475569" />
+        <Text style={t.lbl}>Ad Soyad</Text>
+        <TextInput style={t.inp} value={name} onChangeText={setName}
+          placeholder="İsteğe bağlı" placeholderTextColor="#3F3F46" />
 
-        <View style={s.row3}>
-          <Field label="Yıl"  value={year}   set={setYear} />
-          <Field label="Ay"   value={month}  set={setMonth} />
-          <Field label="Gün"  value={day}    set={setDay} />
+        <View style={t.row}>
+          <Inp label="Yıl" val={year} set={setYear} />
+          <Inp label="Ay" val={month} set={setMonth} />
+          <Inp label="Gün" val={day} set={setDay} />
         </View>
-        <View style={s.row2}>
-          <Field label="Saat (0-23)" value={hour}   set={setHour} />
-          <Field label="Dakika"      value={minute} set={setMinute} />
+        <View style={t.row}>
+          <Inp label="Saat" val={hour} set={setHour} />
+          <Inp label="Dakika" val={minute} set={setMinute} />
         </View>
 
-        <Text style={s.label}>📍 Şehir</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
-          {PRESETS.map(p => (
-            <TouchableOpacity key={p.name}
-              style={[s.chip, selectedCity === p.name && s.chipActive]}
-              onPress={() => { setLat(p.lat.toString()); setLng(p.lng.toString()); setSelectedCity(p.name); }}>
-              <Text style={[s.chipText, selectedCity === p.name && s.chipTextActive]}>{p.name}</Text>
+        <Text style={t.lbl}>Konum</Text>
+        <View style={t.chips}>
+          {CITIES.map(c => (
+            <TouchableOpacity key={c.name}
+              style={[t.chip, city === c.name && t.chipOn]}
+              onPress={() => { setLat(c.lat.toString()); setLng(c.lng.toString()); setCity(c.name); }}>
+              <Text style={[t.chipTxt, city === c.name && t.chipTxtOn]}>{c.name}</Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
 
-        <TouchableOpacity style={s.btnPrimary} onPress={handleCalculate} disabled={loading} activeOpacity={0.8}>
+        <TouchableOpacity style={t.btn} onPress={calculate} disabled={loading} activeOpacity={0.8}>
           {loading
-            ? <ActivityIndicator color="#FFF" />
-            : <Text style={s.btnPrimaryText}>🌌  Haritayı Hesapla & Çiz</Text>}
+            ? <ActivityIndicator color="#FFF" size="small" />
+            : <Text style={t.btnTxt}>Haritayı Hesapla</Text>}
         </TouchableOpacity>
       </View>
 
-      {/* ── SVG Wheel ── */}
+      {/* ── Chart Wheel ── */}
       {svgXml && (
-        <View style={s.card}>
-          <View style={s.rowBetween}>
-            <Text style={s.sectionTitle}>🎨 Doğum Haritası Çarkı</Text>
-            <TouchableOpacity style={s.saveBtn} onPress={handleSave}>
-              <Text style={s.saveBtnText}>💾 Kaydet</Text>
+        <View style={t.section}>
+          <View style={t.rowBetween}>
+            <Text style={t.heading}>Doğum Haritası</Text>
+            <TouchableOpacity style={t.btnSmall} onPress={save}>
+              <Text style={t.btnSmallTxt}>Kaydet</Text>
             </TouchableOpacity>
           </View>
-          <View style={s.svgBox}>
-            <SvgXml xml={svgXml} width={SCREEN_W - 64} height={SCREEN_W - 64} />
+          <View style={t.svgWrap}>
+            <SvgXml xml={svgXml} width={SW - 72} height={SW - 72} />
           </View>
         </View>
       )}
 
-      {/* ── Planet Grid ── */}
+      {/* ── Planets ── */}
       {subj && (
-        <View style={s.card}>
-          <Text style={s.sectionTitle}>🪐 Gezegen Konumları</Text>
-          <View style={s.planetGrid}>
+        <View style={t.section}>
+          <Text style={t.heading}>Gezegen Konumları</Text>
+          <View style={t.table}>
+            <View style={t.tableHead}>
+              <Text style={[t.th, { flex: 0.5 }]}></Text>
+              <Text style={[t.th, { flex: 1.5 }]}>Gezegen</Text>
+              <Text style={[t.th, { flex: 1.5 }]}>Burç</Text>
+              <Text style={[t.th, { flex: 1 }]}>Derece</Text>
+              <Text style={[t.th, { flex: 0.5 }]}>Ev</Text>
+            </View>
             {['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto','chiron','true_node'].map(key => {
               const p = subj[key];
               if (!p || typeof p !== 'object') return null;
-              const emoji = PLANET_EMOJI[p.name] || '🪐';
-              const sign = ZODIAC_TR[p.sign] || p.sign || '';
               return (
-                <View key={key} style={s.planetCard}>
-                  <Text style={s.planetEmoji}>{emoji}</Text>
-                  <Text style={s.planetName}>{p.name}{p.retrograde ? ' ℞' : ''}</Text>
-                  <Text style={s.planetSign}>{sign}</Text>
-                  <Text style={s.planetDeg}>{(p.position ?? 0).toFixed(1)}°</Text>
-                  {p.house != null && <Text style={s.planetHouse}>Ev {p.house}</Text>}
+                <View key={key} style={t.tableRow}>
+                  <Text style={[t.td, t.symbol, { flex: 0.5 }]}>{PLANET_SYMBOLS[p.name] || '·'}</Text>
+                  <Text style={[t.td, { flex: 1.5, color: '#E4E4E7' }]}>
+                    {p.name}{p.retrograde ? '  R' : ''}
+                  </Text>
+                  <Text style={[t.td, { flex: 1.5, color: '#A78BFA' }]}>{ZODIAC[p.sign] || p.sign}</Text>
+                  <Text style={[t.td, { flex: 1, color: '#71717A' }]}>{(p.position ?? 0).toFixed(1)}°</Text>
+                  <Text style={[t.td, { flex: 0.5, color: '#71717A' }]}>{p.house ?? '–'}</Text>
                 </View>
               );
             })}
@@ -164,121 +163,94 @@ export default function NatalScreen() {
         </View>
       )}
 
-      {/* ── Element Bars ── */}
-      {elDist && (
-        <View style={s.card}>
-          <Text style={s.sectionTitle}>🔥 Element & Nitelik Dengesi</Text>
-          <ElBar label="Ateş 🔥"   pct={elDist.fire_percentage}  color="#FF4E50" />
-          <ElBar label="Toprak 🌍" pct={elDist.earth_percentage} color="#11998e" />
-          <ElBar label="Hava 💨"   pct={elDist.air_percentage}   color="#00B4DB" />
-          <ElBar label="Su 🌊"    pct={elDist.water_percentage}  color="#8E2DE2" />
+      {/* ── Elements ── */}
+      {el && (
+        <View style={[t.section, { marginBottom: 32 }]}>
+          <Text style={t.heading}>Element Dağılımı</Text>
+          <Bar label="Ateş"   pct={el.fire_percentage}  color="#EF4444" />
+          <Bar label="Toprak" pct={el.earth_percentage} color="#22C55E" />
+          <Bar label="Hava"   pct={el.air_percentage}   color="#38BDF8" />
+          <Bar label="Su"     pct={el.water_percentage}  color="#8B5CF6" />
         </View>
       )}
     </ScrollView>
   );
 }
 
-/* ── Tiny helpers ── */
-function Field({ label, value, set }) {
+function Inp({ label, val, set }) {
   return (
     <View style={{ flex: 1 }}>
-      <Text style={s.label}>{label}</Text>
-      <TextInput style={s.input} value={value} onChangeText={set} keyboardType="numeric" />
+      <Text style={t.lbl}>{label}</Text>
+      <TextInput style={t.inp} value={val} onChangeText={set} keyboardType="numeric" />
     </View>
   );
 }
 
-function ElBar({ label, pct, color }) {
-  const w = Math.max(pct ?? 0, 2);
+function Bar({ label, pct, color }) {
   return (
-    <View style={{ marginBottom: 10 }}>
-      <View style={s.barHeader}>
-        <Text style={s.barLabel}>{label}</Text>
-        <Text style={s.barPct}>{pct ?? 0}%</Text>
+    <View style={{ marginBottom: 12 }}>
+      <View style={t.barHead}>
+        <Text style={t.barLbl}>{label}</Text>
+        <Text style={t.barVal}>{pct ?? 0}%</Text>
       </View>
-      <View style={s.barTrack}>
-        <View style={[s.barFill, { width: `${w}%`, backgroundColor: color }]} />
+      <View style={t.barTrack}>
+        <View style={[t.barFill, { width: `${Math.max(pct ?? 0, 2)}%`, backgroundColor: color }]} />
       </View>
     </View>
   );
 }
 
-/* ── Styles ── */
-const s = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: '#05051A' },
-  scrollContent: { padding: 14, paddingBottom: 32 },
+const t = StyleSheet.create({
+  bg: { flex: 1, backgroundColor: '#09090B' },
+  pad: { padding: 20, paddingBottom: 40 },
 
-  card: {
-    backgroundColor: 'rgba(14,14,38,0.92)',
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-  },
-  sectionTitle: { fontSize: 15, fontWeight: '800', color: '#FFD700', marginBottom: 12, letterSpacing: 0.3 },
-
-  label: { fontSize: 10, fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 6, marginBottom: 3 },
-  input: {
-    backgroundColor: '#0F0F2E',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+  section: {
+    backgroundColor: '#111113',
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: '#F1F5F9',
-    fontSize: 14,
+    padding: 18,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#1C1C22',
   },
-  row3: { flexDirection: 'row', gap: 8 },
-  row2: { flexDirection: 'row', gap: 8 },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  heading: { fontSize: 16, fontWeight: '700', color: '#FAFAFA', marginBottom: 4 },
+  desc: { fontSize: 13, color: '#52525B', marginBottom: 16, lineHeight: 18 },
 
+  lbl: { fontSize: 11, fontWeight: '600', color: '#52525B', textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 10, marginBottom: 4 },
+  inp: {
+    backgroundColor: '#09090B',
+    borderWidth: 1, borderColor: '#27272A',
+    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 11,
+    color: '#FAFAFA', fontSize: 14,
+  },
+  row: { flexDirection: 'row', gap: 10 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    marginRight: 6,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6,
+    backgroundColor: '#18181B', borderWidth: 1, borderColor: '#27272A',
   },
-  chipActive: { backgroundColor: 'rgba(0,223,216,0.15)', borderColor: '#00DFD8' },
-  chipText: { color: '#94A3B8', fontSize: 12, fontWeight: '600' },
-  chipTextActive: { color: '#00DFD8' },
+  chipOn: { backgroundColor: '#7C3AED', borderColor: '#7C3AED' },
+  chipTxt: { color: '#71717A', fontSize: 12, fontWeight: '600' },
+  chipTxtOn: { color: '#FAFAFA' },
 
-  btnPrimary: {
-    marginTop: 16,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    backgroundColor: '#7928CA',
-  },
-  btnPrimaryText: { color: '#FFF', fontSize: 15, fontWeight: '800', letterSpacing: 0.3 },
+  btn: { marginTop: 20, backgroundColor: '#7C3AED', borderRadius: 8, paddingVertical: 14, alignItems: 'center' },
+  btnTxt: { color: '#FAFAFA', fontSize: 14, fontWeight: '700' },
+  btnSmall: { backgroundColor: '#18181B', borderWidth: 1, borderColor: '#27272A', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 6 },
+  btnSmallTxt: { color: '#A1A1AA', fontSize: 12, fontWeight: '600' },
 
-  saveBtn: { backgroundColor: 'rgba(255,215,0,0.12)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10 },
-  saveBtnText: { color: '#FFD700', fontSize: 11, fontWeight: '700' },
+  svgWrap: { alignItems: 'center', marginTop: 12, backgroundColor: '#09090B', borderRadius: 10, padding: 8 },
 
-  svgBox: { alignItems: 'center', marginTop: 8, backgroundColor: '#05051A', borderRadius: 14, padding: 6 },
+  table: { marginTop: 8 },
+  tableHead: { flexDirection: 'row', paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#1C1C22' },
+  th: { fontSize: 10, fontWeight: '700', color: '#3F3F46', textTransform: 'uppercase', letterSpacing: 0.5 },
+  tableRow: { flexDirection: 'row', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1C1C22' },
+  td: { fontSize: 13, fontWeight: '500', color: '#A1A1AA' },
+  symbol: { fontSize: 16, color: '#7C3AED' },
 
-  planetGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  planetCard: {
-    alignItems: 'center',
-    width: (SCREEN_W - 28 - 16 - 24) / 4,
-    backgroundColor: '#0F0F2E',
-    borderRadius: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-  },
-  planetEmoji: { fontSize: 22, marginBottom: 2 },
-  planetName: { color: '#F1F5F9', fontSize: 10, fontWeight: '700' },
-  planetSign: { color: '#00DFD8', fontSize: 9, marginTop: 1 },
-  planetDeg: { color: '#94A3B8', fontSize: 9 },
-  planetHouse: { color: '#FFD700', fontSize: 8, fontWeight: '700', marginTop: 1 },
-
-  barHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
-  barLabel: { color: '#CBD5E1', fontSize: 12 },
-  barPct: { color: '#94A3B8', fontSize: 12, fontWeight: '700' },
-  barTrack: { height: 7, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 4 },
-  barFill: { height: 7, borderRadius: 4 },
+  barHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  barLbl: { color: '#A1A1AA', fontSize: 13, fontWeight: '500' },
+  barVal: { color: '#52525B', fontSize: 13, fontWeight: '600' },
+  barTrack: { height: 6, backgroundColor: '#18181B', borderRadius: 3 },
+  barFill: { height: 6, borderRadius: 3 },
 });
