@@ -9,6 +9,11 @@ import { cleanSvgForMobile } from '../utils/svgFix';
 
 const { width: SW } = Dimensions.get('window');
 
+const ASPECT_COLORS = {
+  conjunction: '#22C55E', opposition: '#EF4444', trine: '#60A5FA',
+  square: '#F97316', sextile: '#A78BFA', default: '#52525B',
+};
+
 export default function SynastryScreen() {
   const [n1, setN1] = useState(''); const [y1, setY1] = useState('1990');
   const [m1, setM1] = useState('3'); const [d1, setD1] = useState('15');
@@ -37,115 +42,130 @@ export default function SynastryScreen() {
   };
 
   return (
-    <ScrollView style={t.bg} contentContainerStyle={t.pad}>
-      {/* Person A */}
-      <View style={t.section}>
-        <View style={t.personRow}>
-          <View style={[t.dot, { backgroundColor: '#7C3AED' }]} />
-          <Text style={t.heading}>Birinci Kişi</Text>
-        </View>
-        <TextInput style={t.inp} value={n1} onChangeText={setN1} placeholder="Ad" placeholderTextColor="#3F3F46" />
-        <View style={t.row}>
-          <F l="Yıl" v={y1} s={setY1} /> <F l="Ay" v={m1} s={setM1} /> <F l="Gün" v={d1} s={setD1} />
-        </View>
-        <View style={t.row}>
-          <F l="Saat" v={h1} s={setH1} /> <F l="Dakika" v={mi1} s={setMi1} />
-        </View>
+    <ScrollView style={s.scroll} contentContainerStyle={s.pad} showsVerticalScrollIndicator={false}>
+
+      {/* Intro */}
+      <View style={s.intro}>
+        <Text style={s.introTitle}>Synastry Analizi</Text>
+        <Text style={s.introDesc}>İki kişinin haritalarını karşılaştırarak ilişki uyumunu analiz edin.</Text>
       </View>
 
-      {/* Person B */}
-      <View style={t.section}>
-        <View style={t.personRow}>
-          <View style={[t.dot, { backgroundColor: '#EC4899' }]} />
-          <Text style={t.heading}>İkinci Kişi</Text>
-        </View>
-        <TextInput style={t.inp} value={n2} onChangeText={setN2} placeholder="Ad" placeholderTextColor="#3F3F46" />
-        <View style={t.row}>
-          <F l="Yıl" v={y2} s={setY2} /> <F l="Ay" v={m2} s={setM2} /> <F l="Gün" v={d2} s={setD2} />
-        </View>
-        <View style={t.row}>
-          <F l="Saat" v={h2} s={setH2} /> <F l="Dakika" v={mi2} s={setMi2} />
-        </View>
+      {/* Two-person side by side */}
+      <View style={s.personGrid}>
+        <PersonCard color="#7C3AED" label="Birinci Kişi"
+          n={n1} sN={setN1} y={y1} sY={setY1} m={m1} sM={setM1} d={d1} sD={setD1} h={h1} sH={setH1} mi={mi1} sMi={setMi1} />
+        <PersonCard color="#EC4899" label="İkinci Kişi"
+          n={n2} sN={setN2} y={y2} sY={setY2} m={m2} sM={setM2} d={d2} sD={setD2} h={h2} sH={setH2} mi={mi2} sMi={setMi2} />
       </View>
 
-      <TouchableOpacity style={t.btn} onPress={calc} disabled={loading} activeOpacity={0.8}>
-        {loading ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={t.btnTxt}>Uyum Haritasını Hesapla</Text>}
+      <TouchableOpacity style={s.btn} onPress={calc} disabled={loading} activeOpacity={0.8}>
+        {loading ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={s.btnTxt}>Uyum Haritasını Hesapla</Text>}
       </TouchableOpacity>
 
-      {/* Synastry Wheel */}
+      {/* SVG */}
       {svgXml && (
-        <View style={t.section}>
-          <Text style={t.heading}>Synastry Çarkı</Text>
-          <View style={t.svgWrap}>
-            <SvgXml xml={svgXml} width={SW - 72} height={SW - 72} />
+        <View style={s.card}>
+          <Text style={s.cardTitle}>Synastry Çarkı</Text>
+          <View style={s.svgWrap}>
+            <SvgXml xml={svgXml} width={SW - 64} height={SW - 64} />
           </View>
         </View>
       )}
 
-      {/* Aspects */}
-      {aspects && (
-        <View style={[t.section, { marginBottom: 32 }]}>
-          <Text style={t.heading}>Açılar</Text>
-          <Text style={t.meta}>{aspects.length} açı tespit edildi.</Text>
-          {aspects.slice(0, 15).map((a, i) => (
-            <View key={i} style={t.aspectRow}>
-              <Text style={t.aspectPlanet}>{a.p1_name}</Text>
-              <View style={t.aspectBadge}>
-                <Text style={t.aspectType}>{a.aspect}</Text>
+      {/* Aspects table */}
+      {aspects && aspects.length > 0 && (
+        <View style={s.card}>
+          <View style={s.cardTopRow}>
+            <Text style={s.cardTitle}>Açılar</Text>
+            <View style={s.countBadge}><Text style={s.countTxt}>{aspects.length}</Text></View>
+          </View>
+          {aspects.slice(0, 20).map((a, i) => {
+            const col = ASPECT_COLORS[a.aspect?.toLowerCase()] || ASPECT_COLORS.default;
+            return (
+              <View key={i} style={s.aspectRow}>
+                <Text style={s.aspectP}>{a.p1_name}</Text>
+                <View style={[s.aspectBadge, { borderColor: col }]}>
+                  <View style={[s.aspectDot, { backgroundColor: col }]} />
+                  <Text style={[s.aspectType, { color: col }]}>{a.aspect}</Text>
+                </View>
+                <Text style={[s.aspectP, { textAlign: 'right' }]}>{a.p2_name}</Text>
+                <Text style={s.aspectOrb}>{(a.orbit ?? 0).toFixed(1)}°</Text>
               </View>
-              <Text style={t.aspectPlanet}>{a.p2_name}</Text>
-              <Text style={t.aspectOrb}>{(a.orbit ?? 0).toFixed(1)}°</Text>
-            </View>
-          ))}
-          {aspects.length > 15 && (
-            <Text style={t.meta}>ve {aspects.length - 15} açı daha...</Text>
-          )}
+            );
+          })}
+          {aspects.length > 20 && <Text style={s.moreTxt}>+{aspects.length - 20} daha</Text>}
         </View>
       )}
+
+      <View style={{ height: 24 }} />
     </ScrollView>
   );
 }
 
-function F({ l, v, s }) {
+function PersonCard({ color, label, n, sN, y, sY, m, sM, d, sD, h, sH, mi, sMi }) {
   return (
-    <View style={{ flex: 1 }}>
-      <Text style={t.lbl}>{l}</Text>
-      <TextInput style={t.inp} value={v} onChangeText={s} keyboardType="numeric" />
+    <View style={s.pCard}>
+      <View style={[s.pBar, { backgroundColor: color }]} />
+      <Text style={s.pLabel}>{label}</Text>
+      <TextInput style={s.pInp} value={n} onChangeText={sN} placeholder="Ad" placeholderTextColor="#3F3F46" />
+      <View style={s.pRow}>
+        <TextInput style={[s.pInp, s.pSmall]} value={d} onChangeText={sD} keyboardType="numeric" placeholder="G" placeholderTextColor="#3F3F46" />
+        <TextInput style={[s.pInp, s.pSmall]} value={m} onChangeText={sM} keyboardType="numeric" placeholder="A" placeholderTextColor="#3F3F46" />
+        <TextInput style={[s.pInp, s.pSmall]} value={y} onChangeText={sY} keyboardType="numeric" placeholder="Y" placeholderTextColor="#3F3F46" />
+      </View>
+      <View style={s.pRow}>
+        <TextInput style={[s.pInp, s.pSmall]} value={h} onChangeText={sH} keyboardType="numeric" placeholder="S" placeholderTextColor="#3F3F46" />
+        <TextInput style={[s.pInp, s.pSmall]} value={mi} onChangeText={sMi} keyboardType="numeric" placeholder="D" placeholderTextColor="#3F3F46" />
+      </View>
     </View>
   );
 }
 
-const t = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: '#09090B' },
-  pad: { padding: 20, paddingBottom: 40 },
+const s = StyleSheet.create({
+  scroll: { flex: 1, backgroundColor: '#07070A' },
+  pad: { paddingHorizontal: 16, paddingTop: 12 },
 
-  section: {
-    backgroundColor: '#111113', borderRadius: 12, padding: 18, marginBottom: 12,
-    borderWidth: 1, borderColor: '#1C1C22',
+  intro: { marginBottom: 14 },
+  introTitle: { fontSize: 20, fontWeight: '800', color: '#FAFAFA', marginBottom: 4 },
+  introDesc: { fontSize: 12, color: '#52525B', lineHeight: 17 },
+
+  personGrid: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  pCard: {
+    flex: 1, backgroundColor: '#0E0E13', borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: '#1A1A21',
   },
-  personRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  heading: { fontSize: 16, fontWeight: '700', color: '#FAFAFA' },
-  meta: { fontSize: 12, color: '#52525B', marginTop: 4, marginBottom: 8 },
-
-  lbl: { fontSize: 11, fontWeight: '600', color: '#52525B', textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 10, marginBottom: 4 },
-  inp: {
-    backgroundColor: '#09090B', borderWidth: 1, borderColor: '#27272A',
-    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 11, color: '#FAFAFA', fontSize: 14,
+  pBar: { height: 3, borderRadius: 2, marginBottom: 10, width: 24 },
+  pLabel: { fontSize: 11, fontWeight: '700', color: '#52525B', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  pInp: {
+    backgroundColor: '#07070A', borderWidth: 1, borderColor: '#1E1E26',
+    borderRadius: 6, paddingHorizontal: 8, paddingVertical: 9,
+    color: '#FAFAFA', fontSize: 13, marginBottom: 5,
   },
-  row: { flexDirection: 'row', gap: 10 },
+  pSmall: { flex: 1, textAlign: 'center', paddingHorizontal: 2 },
+  pRow: { flexDirection: 'row', gap: 4 },
 
-  btn: { backgroundColor: '#7C3AED', borderRadius: 8, paddingVertical: 14, alignItems: 'center', marginBottom: 12 },
-  btnTxt: { color: '#FAFAFA', fontSize: 14, fontWeight: '700' },
+  btn: { backgroundColor: '#7C3AED', borderRadius: 10, paddingVertical: 16, alignItems: 'center', marginBottom: 12 },
+  btnTxt: { color: '#FAFAFA', fontSize: 15, fontWeight: '700' },
 
-  svgWrap: { alignItems: 'center', marginTop: 12, backgroundColor: '#09090B', borderRadius: 10, padding: 8 },
+  card: {
+    backgroundColor: '#0E0E13', borderRadius: 12, padding: 16, marginBottom: 12,
+    borderWidth: 1, borderColor: '#1A1A21',
+  },
+  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: '#FAFAFA', marginBottom: 8 },
+  svgWrap: { alignItems: 'center', backgroundColor: '#07070A', borderRadius: 10, padding: 8 },
+
+  countBadge: { backgroundColor: '#7C3AED', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
+  countTxt: { color: '#FFF', fontSize: 11, fontWeight: '800' },
 
   aspectRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#1C1C22',
+    paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: '#141419',
   },
-  aspectPlanet: { flex: 1, fontSize: 13, fontWeight: '600', color: '#E4E4E7' },
-  aspectBadge: { backgroundColor: '#18181B', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 4 },
-  aspectType: { fontSize: 11, fontWeight: '700', color: '#A78BFA' },
-  aspectOrb: { width: 40, textAlign: 'right', fontSize: 12, color: '#52525B' },
+  aspectP: { flex: 1, fontSize: 12, fontWeight: '600', color: '#D4D4D8' },
+  aspectBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
+  aspectDot: { width: 5, height: 5, borderRadius: 3 },
+  aspectType: { fontSize: 10, fontWeight: '700' },
+  aspectOrb: { width: 36, textAlign: 'right', fontSize: 11, color: '#3F3F46', fontWeight: '600' },
+  moreTxt: { fontSize: 11, color: '#3F3F46', textAlign: 'center', marginTop: 8 },
 });
