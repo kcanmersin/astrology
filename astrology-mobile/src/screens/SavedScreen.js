@@ -4,8 +4,6 @@ import {
   ScrollView, Alert, RefreshControl
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
-
 export default function SavedScreen() {
   const [profiles, setProfiles] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
