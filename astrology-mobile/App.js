@@ -539,30 +539,58 @@ function WebNatalView() {
 
       {/* Styled Accordion Groq AI Report */}
       {aiSections.length > 0 && (
-        <div className="glass-card rounded-3xl overflow-hidden space-y-0">
-          <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+        <div className="glass-card rounded-3xl overflow-hidden space-y-0 border border-white/15">
+          <div className="p-6 border-b border-white/10 flex flex-wrap justify-between items-center bg-white/5 gap-3">
             <div>
-              <h3 className="font-headline text-xl font-bold text-on-surface">Derinlemesine Groq AI Analizi</h3>
-              <p className="text-xs text-on-surface-variant italic">Göksel konumların bütünsel psikolojik yorumu</p>
+              <h3 className="font-headline text-xl md:text-2xl font-bold text-on-surface">Derinlemesine Groq AI Analizi</h3>
+              <p className="text-xs text-on-surface-variant italic">Göksel konumların bütünsel psikolojik & karmik yorumu</p>
             </div>
-            <span className="bg-secondary/10 border border-secondary/30 text-secondary text-xs font-bold px-3.5 py-1.5 rounded-full">{aiModel || 'Llama 3.3 70B'}</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setOpenAccordion(openAccordion === 'ALL' ? -1 : 'ALL')}
+                className="text-xs font-bold px-3.5 py-1.5 rounded-full border border-tertiary/40 text-tertiary bg-tertiary/10 hover:bg-tertiary/20 transition-colors"
+              >
+                {openAccordion === 'ALL' ? 'Hepsini Daralt' : '📖 Hepsini Oku'}
+              </button>
+              <span className="bg-secondary/10 border border-secondary/30 text-secondary text-xs font-bold px-3.5 py-1.5 rounded-full">
+                {aiModel || 'Llama 3.3 70B'}
+              </span>
+            </div>
           </div>
 
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-white/10">
             {aiSections.map((sec, idx) => {
-              const isOpen = openAccordion === idx;
+              const isOpen = openAccordion === 'ALL' || openAccordion === idx;
               return (
                 <div key={sec.id} className="accordion-item">
-                  <button onClick={() => setOpenAccordion(isOpen ? -1 : idx)} className="w-full flex justify-between items-center p-6 hover:bg-white/5 transition-all text-left group">
-                    <span className="font-body text-base font-semibold text-on-surface group-hover:text-secondary transition-colors flex items-center gap-4">
-                      <span className="w-7 h-7 rounded-full border border-secondary/50 flex items-center justify-center text-xs font-bold text-secondary">0{idx + 1}</span>
+                  <button
+                    onClick={() => setOpenAccordion(isOpen && openAccordion !== 'ALL' ? -1 : idx)}
+                    className="w-full flex justify-between items-center p-5 md:p-6 hover:bg-white/5 transition-all text-left group"
+                  >
+                    <span className="font-headline text-base md:text-lg font-bold text-on-surface group-hover:text-secondary transition-colors flex items-center gap-3">
+                      <span className="w-8 h-8 rounded-full border border-secondary/50 flex items-center justify-center text-xs font-bold text-secondary bg-secondary/10">
+                        0{idx + 1}
+                      </span>
                       {sec.title}
                     </span>
-                    <span className={`material-symbols-outlined transition-transform duration-300 text-on-surface-variant ${isOpen ? 'rotate-180 text-secondary' : ''}`}>expand_more</span>
+                    <span className={`material-symbols-outlined transition-transform duration-300 text-on-surface-variant ${isOpen ? 'rotate-180 text-secondary' : ''}`}>
+                      expand_more
+                    </span>
                   </button>
                   {isOpen && (
-                    <div className="px-6 pb-6 pt-2 text-on-surface-variant/90 text-sm leading-relaxed ml-11 border-l-2 border-secondary/30 whitespace-pre-line">
-                      {sec.body}
+                    <div className="px-5 pb-6 pt-1 text-on-surface text-sm md:text-base leading-relaxed pl-4 border-l-2 border-secondary/50 ml-2 md:ml-6 my-2 space-y-3">
+                      {sec.body.split('\n\n').map((paragraph, pIdx) => {
+                        const formatted = paragraph
+                          .replace(/\*\*(.*?)\*\*/g, '<strong class="text-tertiary font-bold">$1</strong>')
+                          .replace(/^- (.*)$/gm, '• $1');
+                        return (
+                          <p
+                            key={pIdx}
+                            className="text-on-surface/95 text-sm md:text-base leading-relaxed whitespace-pre-line"
+                            dangerouslySetInnerHTML={{ __html: formatted }}
+                          />
+                        );
+                      })}
                     </div>
                   )}
                 </div>
