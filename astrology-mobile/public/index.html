@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+    <title>Lumina Astra - Kozmik Astroloji Engine</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <!-- Scripts & Tailwind -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+              "on-surface": "#e2e2e2",
+              "background": "#0B0D17",
+              "surface-variant": "#333535",
+              "primary": "#c5c5d4",
+              "secondary": "#ddb7ff",
+              "secondary-container": "#622599",
+              "tertiary": "#ffe16d",
+              "tertiary-container": "#120d00",
+              "error": "#ffb4ab",
+              "on-surface-variant": "#c7c5cc"
+            },
+            "fontFamily": {
+              "headline": ["Playfair Display", "serif"],
+              "body": ["Inter", "sans-serif"],
+              "label-caps": ["Inter", "sans-serif"]
+            }
+          }
+        }
+      }
+    </script>
+    
+    <style>
+      body {
+        background-color: #0B0D17;
+        color: #e2e2e2;
+        font-family: 'Inter', sans-serif;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+      h1, h2, h3, h4, .font-headline {
+        font-family: 'Playfair Display', serif !important;
+      }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+      }
+      #shader-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;
+      }
+      .glass-card {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+      }
+      .glass-card:hover {
+        border-color: rgba(221, 183, 255, 0.4);
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .cosmic-border {
+        position: relative;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px dashed rgba(221, 183, 255, 0.4);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      #root {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+    </style>
+</head>
+<body class="selection:bg-secondary/30">
+    <div id="root"></div>
+</body>
+</html>
