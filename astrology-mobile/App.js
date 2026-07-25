@@ -104,7 +104,6 @@ function cleanAndCropSvgForWeb(svgStr) {
   for (const [v, c] of Object.entries(colorMap)) { cleaned = cleaned.replaceAll(v, c); }
   cleaned = cleaned.replace(/var\(--[a-z0-9-_]+\)/gi, '#94A3B8');
 
-  // Crop viewBox to focus 100% on the central 360-degree astrological wheel
   cleaned = cleaned.replace(/viewBox=['"][^'"]*['"]/gi, "viewBox='95 35 490 490'");
 
   const cssHide = `
@@ -134,6 +133,68 @@ function parseMarkdownToSections(mdStr) {
     const body = lines.slice(1).join('\n').trim() || sec.trim();
     return { id: i, title, body };
   });
+}
+
+/* ==================== INTERACTIVE ZOOMABLE SVG WHEEL ==================== */
+function ZoomableSvgWheel({ svgHtml }) {
+  const [scale, setScale] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  if (!svgHtml) return null;
+
+  return (
+    <div className="relative glass-card rounded-3xl p-6 text-center space-y-4 group">
+      <div className="flex justify-between items-center px-2 border-b border-white/10 pb-3">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-secondary">explore</span>
+          <h3 className="font-headline text-lg font-bold text-on-surface">Doğum Haritası Çarkı</h3>
+        </div>
+
+        {/* Zoom Controls */}
+        <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 rounded-full p-1">
+          <button onClick={() => setScale(Math.max(0.8, scale - 0.2))} className="w-7 h-7 rounded-full flex items-center justify-center text-on-surface hover:bg-white/10 text-sm font-bold">-</button>
+          <span className="text-[11px] font-bold text-tertiary px-1">%{Math.round(scale * 100)}</span>
+          <button onClick={() => setScale(Math.min(2.5, scale + 0.2))} className="w-7 h-7 rounded-full flex items-center justify-center text-on-surface hover:bg-white/10 text-sm font-bold">+</button>
+          <button onClick={() => setIsFullscreen(true)} className="ml-1 px-3 py-1 bg-secondary-container text-secondary text-xs font-bold rounded-full hover:shadow-[0_0_15px_rgba(98,37,153,0.5)] flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs">zoom_in</span> Büyüt
+          </button>
+        </div>
+      </div>
+
+      {/* SVG Container with Scale Transform */}
+      <div className="overflow-hidden py-4 flex justify-center items-center cursor-zoom-in" onClick={() => setIsFullscreen(true)}>
+        <div
+          style={{ transform: `scale(${scale})`, transition: 'transform 0.2s ease-out', transformOrigin: 'center center' }}
+          dangerouslySetInnerHTML={{ __html: svgHtml }}
+          className="w-full flex justify-center"
+        />
+      </div>
+
+      <p className="text-[11px] text-on-surface-variant italic">💡 Büyütmek için üzerine tıklayın veya + / - butonlarını kullanın.</p>
+
+      {/* Fullscreen Lightbox Modal */}
+      {isFullscreen && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-2xl flex flex-col items-center justify-center p-4">
+          <div className="absolute top-4 right-6 flex items-center gap-3">
+            <button onClick={() => setScale(Math.max(1, scale - 0.3))} className="w-10 h-10 rounded-full glass-card text-on-surface flex items-center justify-center font-bold text-lg">-</button>
+            <span className="text-sm font-bold text-tertiary">%{Math.round(scale * 100)}</span>
+            <button onClick={() => setScale(Math.min(4, scale + 0.3))} className="w-10 h-10 rounded-full glass-card text-on-surface flex items-center justify-center font-bold text-lg">+</button>
+            <button onClick={() => setIsFullscreen(false)} className="w-10 h-10 rounded-full bg-secondary-container text-secondary flex items-center justify-center font-bold text-lg ml-4">✕</button>
+          </div>
+
+          <h3 className="font-headline text-2xl font-bold text-on-surface mb-4">360° İsviçre Efemerisi Detaylı Harita</h3>
+
+          <div className="flex-1 w-full max-w-4xl flex justify-center items-center overflow-auto p-4">
+            <div
+              style={{ transform: `scale(${scale * 1.3})`, transition: 'transform 0.2s ease-out', transformOrigin: 'center center' }}
+              dangerouslySetInnerHTML={{ __html: svgHtml }}
+              className="w-full flex justify-center"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* ==================== WEB EPIC UI COMPONENT ==================== */
@@ -473,16 +534,8 @@ function WebNatalView() {
         </div>
       </div>
 
-      {/* High-Definition Cleaned & Cropped SVG Chart Wheel */}
-      {svg && (
-        <div className="glass-card rounded-3xl p-6 text-center space-y-4">
-          <div className="flex justify-between items-center px-2">
-            <h3 className="font-headline text-xl font-bold text-on-surface">Doğum Haritası Çarkı</h3>
-            <span className="text-xs font-bold text-tertiary bg-tertiary/10 border border-tertiary/30 px-3 py-1 rounded-full">360° İsviçre Efemerisi</span>
-          </div>
-          <div className="flex justify-center items-center w-full overflow-hidden py-2" dangerouslySetInnerHTML={{ __html: svg }} />
-        </div>
-      )}
+      {/* Interactive Zoomable SVG Chart Wheel */}
+      {svg && <ZoomableSvgWheel svgHtml={svg} />}
 
       {/* Styled Accordion Groq AI Report */}
       {aiSections.length > 0 && (
@@ -594,61 +647,206 @@ function WebSynastryView() {
         </div>
       )}
 
-      {svg && (
-        <div className="glass-card rounded-3xl p-6 text-center space-y-4">
-          <h3 className="font-headline text-xl font-bold text-on-surface mb-4">Synastry Uyum Çarkı</h3>
-          <div dangerouslySetInnerHTML={{ __html: svg }} className="flex justify-center" />
-        </div>
-      )}
+      {svg && <ZoomableSvgWheel svgHtml={svg} />}
     </div>
   );
 }
 
-/* ==================== WEB ARCHIVE VIEW ==================== */
+/* ==================== WEB ARCHIVE VIEW WITH EPIC DETAIL MODAL ==================== */
 function WebArchiveView({ onNewAnalysis }) {
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [filter, setFilter] = useState('ALL');
+
+  const archiveItems = [
+    {
+      id: 'item-1',
+      title: 'Selim Yılmaz',
+      type: 'Natal',
+      date: '14 May 1992 • 04:30',
+      city: 'İstanbul',
+      tags: ['Boğa Sun', 'Yükselen Akrep', 'Balık Ay'],
+      sun: 'Boğa 23.5°',
+      moon: 'Balık 14.1°',
+      asc: 'Akrep 08.2°',
+      details: 'Güneş Boğa burcunda ve 7. evde konumlanarak ilişkilerde kararlılık ve sadakat arayışını simgeliyor. Yükselen Akrep dış dünyaya gizemli, güçlü ve sezgisel bir duruş sergiler. Balık Ay duygusal derinlik ve empati bağını besler.',
+    },
+    {
+      id: 'item-2',
+      title: 'Zeynep & Can',
+      type: 'Uyum',
+      date: '2 saat önce kaydedildi',
+      city: 'İstanbul - Ankara',
+      tags: ['%84 Uyum', 'Kozmik Rezonans'],
+      score: 84,
+      details: 'Ay ve Venüs arasında gerçekleşen olumlu üçgen açı (Trine), ikili ilişkide müthiş bir ruhsal uyum ve karşılıklı anlayış yaratmaktadır. Zihinsel düzeyde Merkür-Jüpiter kavuşumu sohbetleri son derece keyifli kılar.',
+    },
+    {
+      id: 'item-3',
+      title: 'Merve Akın',
+      type: 'Natal',
+      date: '22 Eki 1988 • 21:15',
+      city: 'İzmir',
+      tags: ['Terazi Sun', 'Yükselen İkizler'],
+      sun: 'Terazi 29.1°',
+      moon: 'Kova 04.5°',
+      asc: 'İkizler 18.9°',
+      details: 'Zarafet, diplomasi ve estetik değerlerin ön planda olduğu Terazi yerleşimi. Yükselen İkizler zihinsel çeviklik ve sosyal merak sağlar.',
+    },
+    {
+      id: 'item-4',
+      title: 'Merkür Retrosu 2024',
+      type: 'Transit',
+      date: '15 gün önce kaydedildi',
+      city: 'Göksel Transit',
+      tags: ['Kritik Dönem', 'İletişim & Anlaşmalar'],
+      details: 'Merkür retrosu Başak ve Aslan burçları geçişinde gerçekleşiyor. Sözleşmeler, dijital veriler ve eski konuların tekrar değerlendirilmesi gereken içsel bir dönem.',
+    },
+    {
+      id: 'item-5',
+      title: 'Ali & Emre',
+      type: 'Uyum',
+      date: '1 ay önce kaydedildi',
+      city: 'Bursa',
+      tags: ['%52 Uyum', 'Dengeli Bağ'],
+      score: 52,
+      details: 'Satürn karesi nedeniyle zaman zaman fikir ayrılıkları ve sabır gerektiren durumlar yaşanabilir. Ortak fiziksel aktivite ve disiplinli hedefler ilişkiyi güçlendirir.',
+    }
+  ];
+
+  const filtered = archiveItems.filter(item => {
+    if (filter === 'NATAL') return item.type === 'Natal';
+    if (filter === 'UYUM') return item.type === 'Uyum';
+    return true;
+  });
+
   return (
     <div className="space-y-8">
       <div>
         <h2 className="font-headline text-3xl font-bold text-on-surface mb-1">Kozmik Arşiv</h2>
-        <p className="text-on-surface-variant text-sm">Kaydedilmiş tüm natal haritalarınız ve uyum analizleriniz burada saklanır.</p>
+        <p className="text-on-surface-variant text-sm">Kaydedilmiş tüm natal haritalarınız, uyum analizleriniz ve göksel raporlarınız burada saklanır.</p>
       </div>
 
+      {/* Categories Chips */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-        <button className="px-4 py-1.5 rounded-full bg-tertiary text-black text-xs font-bold shadow-lg">TÜMÜ</button>
-        <button className="px-4 py-1.5 rounded-full glass-card text-on-surface-variant text-xs font-bold hover:text-on-surface">NATAL HARİTALAR</button>
-        <button className="px-4 py-1.5 rounded-full glass-card text-on-surface-variant text-xs font-bold hover:text-on-surface">UYUM RAPORLARI</button>
+        <button onClick={() => setFilter('ALL')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filter === 'ALL' ? 'bg-tertiary text-black shadow-lg' : 'glass-card text-on-surface-variant hover:text-on-surface'}`}>TÜMÜ ({archiveItems.length})</button>
+        <button onClick={() => setFilter('NATAL')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filter === 'NATAL' ? 'bg-tertiary text-black shadow-lg' : 'glass-card text-on-surface-variant hover:text-on-surface'}`}>NATAL HARİTALAR</button>
+        <button onClick={() => setFilter('UYUM')} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filter === 'UYUM' ? 'bg-tertiary text-black shadow-lg' : 'glass-card text-on-surface-variant hover:text-on-surface'}`}>UYUM RAPORLARI</button>
       </div>
 
+      {/* Archive Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="glass-card p-6 rounded-2xl space-y-3 relative group">
-          <div className="flex justify-between items-start">
-            <span className="text-[10px] font-bold text-on-surface-variant bg-white/5 px-3 py-1 rounded-full border border-white/5 uppercase">Natal</span>
-          </div>
-          <h3 className="font-headline text-xl font-bold text-on-surface">Selim Yılmaz</h3>
-          <p className="text-xs text-on-surface-variant">14 May 1992 • 04:30</p>
-          <div className="flex gap-2">
-            <span className="px-3 py-1 rounded-full bg-white/5 text-xs text-on-surface-variant">Boğa</span>
-            <span className="px-3 py-1 rounded-full bg-white/5 text-xs text-on-surface-variant">Yükselen Akrep</span>
-          </div>
-        </div>
+        {filtered.map(item => (
+          <div key={item.id} onClick={() => setSelectedItem(item)} className="glass-card p-6 rounded-3xl space-y-4 relative group cursor-pointer hover:scale-[1.02] transition-all border border-white/10">
+            <div className="flex justify-between items-start">
+              <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                <span className="material-symbols-outlined text-secondary text-xl">
+                  {item.type === 'Natal' ? 'person_pin' : item.type === 'Uyum' ? 'favorite' : 'auto_mode'}
+                </span>
+              </div>
+              <span className={`text-[10px] font-bold px-3 py-1 rounded-full border uppercase ${item.type === 'Uyum' ? 'text-tertiary bg-tertiary/10 border-tertiary/20' : 'text-on-surface-variant bg-white/5 border-white/5'}`}>{item.type}</span>
+            </div>
 
-        <div className="glass-card p-6 rounded-2xl space-y-3 relative group">
-          <div className="flex justify-between items-start">
-            <span className="text-[10px] font-bold text-tertiary bg-tertiary/10 px-3 py-1 rounded-full border border-tertiary/20 uppercase">Uyum</span>
-          </div>
-          <h3 className="font-headline text-xl font-bold text-on-surface">Zeynep & Can</h3>
-          <p className="text-xs text-on-surface-variant">2 saat önce kaydedildi</p>
-          <div className="flex gap-2">
-            <span className="px-3 py-1 rounded-full bg-tertiary/10 text-tertiary text-xs font-bold">%84 Uyum</span>
-          </div>
-        </div>
+            <div>
+              <h3 className="font-headline text-xl font-bold text-on-surface group-hover:text-secondary transition-colors">{item.title}</h3>
+              <p className="text-xs text-on-surface-variant mt-1 flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">schedule</span> {item.date}
+              </p>
+            </div>
 
-        <div onClick={onNewAnalysis} className="cosmic-border p-6 rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer min-h-[180px] hover:border-secondary transition-all">
-          <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 text-secondary text-2xl">+</div>
-          <h4 className="font-headline text-lg font-bold text-on-surface">Yeni Analiz</h4>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {item.tags.map((t, idx) => (
+                <span key={idx} className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-on-surface-variant">{t}</span>
+              ))}
+            </div>
+
+            <div className="pt-2 flex justify-between items-center border-t border-white/5">
+              <span className="text-[11px] font-semibold text-tertiary flex items-center gap-1">
+                Detayları Görüntüle <span className="material-symbols-outlined text-xs group-hover:translate-x-1 transition-transform">arrow_forward</span>
+              </span>
+            </div>
+          </div>
+        ))}
+
+        {/* Add New Analysis Card */}
+        <div onClick={onNewAnalysis} className="cosmic-border p-6 rounded-3xl flex flex-col items-center justify-center text-center cursor-pointer min-h-[220px] hover:border-secondary transition-all group">
+          <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-3 text-secondary text-3xl group-hover:scale-110 transition-transform">+</div>
+          <h4 className="font-headline text-xl font-bold text-on-surface">Yeni Analiz Oluştur</h4>
           <p className="text-xs text-on-surface-variant mt-1">Harita veya uyum raporu ekleyin</p>
         </div>
       </div>
+
+      {/* EPIC ARCHIVE DETAIL MODAL */}
+      {selectedItem && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4 md:p-8">
+          <div className="glass-card w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 md:p-8 space-y-6 relative border border-white/20 shadow-2xl">
+            {/* Close Button */}
+            <button onClick={() => setSelectedItem(null)} className="absolute top-6 right-6 w-9 h-9 rounded-full bg-white/10 text-on-surface flex items-center justify-center font-bold hover:bg-white/20 transition-all">✕</button>
+
+            {/* Header */}
+            <div className="flex items-center gap-4 border-b border-white/10 pb-4">
+              <div className="w-14 h-14 rounded-2xl bg-secondary-container text-secondary flex items-center justify-center text-3xl">
+                <span className="material-symbols-outlined text-3xl">{selectedItem.type === 'Natal' ? 'person_pin' : selectedItem.type === 'Uyum' ? 'favorite' : 'auto_mode'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-tertiary uppercase tracking-widest bg-tertiary/10 border border-tertiary/20 px-3 py-0.5 rounded-full">{selectedItem.type} RAPORU</span>
+                <h2 className="font-headline text-3xl font-bold text-on-surface mt-1">{selectedItem.title}</h2>
+                <p className="text-xs text-on-surface-variant">{selectedItem.date} • {selectedItem.city}</p>
+              </div>
+            </div>
+
+            {/* Summary Badges */}
+            {selectedItem.sun && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="glass-card p-3 rounded-xl text-center">
+                  <span className="text-[10px] font-bold text-secondary uppercase block">Güneş</span>
+                  <span className="text-sm font-bold text-on-surface">{selectedItem.sun}</span>
+                </div>
+                <div className="glass-card p-3 rounded-xl text-center">
+                  <span className="text-[10px] font-bold text-primary uppercase block">Ay</span>
+                  <span className="text-sm font-bold text-on-surface">{selectedItem.moon}</span>
+                </div>
+                <div className="glass-card p-3 rounded-xl text-center">
+                  <span className="text-[10px] font-bold text-tertiary uppercase block">Yükselen</span>
+                  <span className="text-sm font-bold text-on-surface">{selectedItem.asc}</span>
+                </div>
+              </div>
+            )}
+
+            {selectedItem.score && (
+              <div className="glass-card p-6 rounded-2xl flex items-center gap-6">
+                <div className="w-24 h-24 rounded-full border-4 border-secondary flex flex-col items-center justify-center bg-secondary/10">
+                  <span className="font-headline text-3xl font-extrabold text-on-surface">%{selectedItem.score}</span>
+                  <span className="text-[9px] font-bold text-tertiary uppercase">UYUM</span>
+                </div>
+                <div>
+                  <h4 className="font-headline text-lg font-bold text-on-surface">Kozmik Uyum Seviyesi</h4>
+                  <p className="text-xs text-on-surface-variant mt-1">İki ruh arasındaki duygusal ve zihinsel çekim gücü.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Full Report Details */}
+            <div className="space-y-3">
+              <h4 className="font-headline text-base font-bold text-tertiary uppercase tracking-wider">YAPAY ZEKA ANALİZ RAPORU</h4>
+              <div className="glass-card p-5 rounded-2xl text-sm text-on-surface-variant leading-relaxed">
+                {selectedItem.details}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex justify-between items-center pt-4 border-t border-white/10">
+              <button onClick={() => setSelectedItem(null)} className="px-5 py-2.5 glass-card rounded-xl text-xs font-bold text-on-surface-variant hover:text-on-surface">
+                Kapat
+              </button>
+              <div className="flex gap-2">
+                <button onClick={() => alert('PDF Raporu indiriliyor...')} className="px-5 py-2.5 bg-secondary-container text-secondary rounded-xl text-xs font-bold flex items-center gap-1.5 hover:shadow-[0_0_15px_rgba(98,37,153,0.5)] transition-all">
+                  <span className="material-symbols-outlined text-sm">download</span> PDF İndir
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
