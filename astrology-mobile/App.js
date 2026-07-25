@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, StatusBar } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import WelcomeScreen from './src/screens/WelcomeScreen';
 import NatalScreen from './src/screens/NatalScreen';
 import SynastryScreen from './src/screens/SynastryScreen';
 import AIScreen from './src/screens/AIScreen';
@@ -11,6 +12,7 @@ const TABS = [
   { key: 'synastry', label: 'Uyum',     sub: 'Synastry' },
   { key: 'ai',       label: 'AI Yorum', sub: 'Groq LLM' },
   { key: 'saved',    label: 'Arşiv',    sub: 'Profiller' },
+  { key: 'welcome',  label: 'Profil',   sub: 'Giriş / Hoşgeldin' },
 ];
 
 function TabBar({ activeTab, setActiveTab }) {
@@ -39,9 +41,20 @@ function TabBar({ activeTab, setActiveTab }) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('natal');
+  const [userEmail, setUserEmail] = useState(null);
+
+  const handleStart = () => {
+    setActiveTab('natal');
+  };
+
+  const handleLoginSuccess = (email) => {
+    setUserEmail(email);
+    setActiveTab('natal');
+  };
 
   const screen = (() => {
     switch (activeTab) {
+      case 'welcome':  return <WelcomeScreen onStart={handleStart} onLoginSuccess={handleLoginSuccess} />;
       case 'natal':    return <NatalScreen />;
       case 'synastry': return <SynastryScreen />;
       case 'ai':       return <AIScreen />;
@@ -54,22 +67,24 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" backgroundColor="#070714" />
       <SafeAreaView style={styles.root} edges={['top']}>
-        {/* Lumina Astra Header */}
+        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.brand}>LUMINA ASTRA</Text>
-            <Text style={styles.brandSub}>Kozmik Astroloji Engine</Text>
+            <Text style={styles.brandSub}>
+              {userEmail ? `👤 ${userEmail}` : 'Kozmik Astroloji Engine'}
+            </Text>
           </View>
           <View style={styles.badges}>
             <View style={styles.badge}><Text style={styles.badgeText}>Swiss Eph.</Text></View>
-            <View style={[styles.badge, styles.badgeAccent]}><Text style={[styles.badgeText, styles.badgeAccentText] font-bold}>Groq AI</Text></View>
+            <View style={[styles.badge, styles.badgeAccent]}><Text style={[styles.badgeText, styles.badgeAccentText]}>Groq AI</Text></View>
           </View>
         </View>
 
-        {/* Content */}
+        {/* Main View */}
         <View style={styles.content}>{screen}</View>
 
-        {/* Bottom Tab Bar */}
+        {/* Navigation Bar */}
         <TabBar activeTab={activeTab} setActiveTab={setActiveTab} />
       </SafeAreaView>
     </SafeAreaProvider>
@@ -101,7 +116,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.08)',
     paddingTop: 10,
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
   },
   tab: {
     flex: 1,
@@ -112,10 +127,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabActive: { backgroundColor: 'rgba(124, 58, 237, 0.15)' },
-  tabIndicator: { width: 20, height: 3, borderRadius: 2, backgroundColor: 'transparent', marginBottom: 6 },
+  tabIndicator: { width: 18, height: 3, borderRadius: 2, backgroundColor: 'transparent', marginBottom: 5 },
   tabIndicatorActive: { backgroundColor: '#7C3AED' },
-  tabLabel: { fontSize: 13, fontWeight: '700', color: '#52525B' },
+  tabLabel: { fontSize: 12, fontWeight: '700', color: '#52525B' },
   tabLabelActive: { color: '#FAFAFA' },
-  tabSub: { fontSize: 9, fontWeight: '500', color: '#3F3F46', marginTop: 2 },
+  tabSub: { fontSize: 8, fontWeight: '500', color: '#3F3F46', marginTop: 2 },
   tabSubActive: { color: '#A1A1AA' },
 });
