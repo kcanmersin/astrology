@@ -1,115 +1,434 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" class="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kerykeion Astrology Engine - AI & Swiss Ephemeris</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-</head>
-<body>
-    <div class="stars-bg"></div>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+    <title>Lumina Astra - Kozmik Astroloji Engine & AI</title>
     
-    <header class="app-header">
-        <div class="logo">
-            <span class="sparkle">✨</span> KERYKEION <span class="badge">AI Engine</span>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <!-- Tailwind CSS & Marked.js & Three.js -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "background": "#070714",
+              "surface": "#0E0E1F",
+              "surface-container": "#14142B",
+              "surface-variant": "#1C1C3A",
+              "primary": "#c5c5d4",
+              "secondary": "#ddb7ff",
+              "secondary-container": "#622599",
+              "tertiary": "#ffe16d",
+              "on-surface": "#e2e2e2",
+              "on-surface-variant": "#a1a1aa",
+            },
+            fontFamily: {
+              "headline": ["Playfair Display", "serif"],
+              "body": ["Inter", "sans-serif"],
+            }
+          }
+        }
+      }
+    </script>
+    
+    <style>
+      body {
+        background-color: #070714;
+        color: #e2e2e2;
+        font-family: 'Inter', sans-serif;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+      .font-headline {
+        font-family: 'Playfair Display', serif !important;
+      }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+      }
+      #shader-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;
+      }
+      .glass-card {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .glass-card:hover {
+        border-color: rgba(221, 183, 255, 0.3);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .glass-input {
+        background: rgba(7, 7, 20, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #F1F5F9;
+      }
+      .glass-input:focus {
+        border-color: rgba(221, 183, 255, 0.5);
+        box-shadow: 0 0 15px rgba(221, 183, 255, 0.25);
+        outline: none;
+      }
+      .cosmic-btn {
+        background: linear-gradient(135deg, #7C3AED, #EC4899);
+        box-shadow: 0 0 25px rgba(124, 58, 237, 0.4);
+        transition: all 0.3s ease;
+      }
+      .cosmic-btn:hover {
+        box-shadow: 0 0 35px rgba(236, 72, 153, 0.6);
+        transform: translateY(-2px);
+      }
+      .accordion-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .accordion-active .accordion-content {
+        max-height: 1200px;
+      }
+      .svg-wrapper svg {
+        width: 100%;
+        height: auto;
+        max-height: 520px;
+        filter: drop-shadow(0 0 20px rgba(124, 58, 237, 0.3));
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="selection:bg-secondary/30 selection:text-secondary">
+
+<!-- WebGL Background Canvas -->
+<canvas id="shader-bg"></canvas>
+
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 backdrop-blur-xl border-b border-white/5 bg-black/20">
+    <div class="flex items-center gap-3 cursor-pointer" onclick="showTab('natal')">
+        <span class="material-symbols-outlined text-secondary text-2xl" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+        <h1 class="font-headline text-xl font-bold text-on-surface tracking-widest uppercase">Lumina Astra</h1>
+    </div>
+    <div class="flex items-center gap-3">
+        <a href="/docs" target="_blank" class="hidden sm:flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full border border-white/10 glass-card text-on-surface-variant hover:text-secondary transition-colors">
+            <span class="material-symbols-outlined text-sm">api</span> Swagger Docs
+        </a>
+        <button class="w-10 h-10 rounded-full flex items-center justify-center glass-card hover:bg-white/10 transition-colors" title="Bildirimler">
+            <span class="material-symbols-outlined text-on-surface-variant text-lg">notifications</span>
+        </button>
+    </div>
+</header>
+
+<main class="relative z-10 pt-24 pb-32 px-4 md:px-8 max-w-6xl mx-auto">
+
+    <!-- ==================== VIEW 1: NATAL CHART & AI ==================== -->
+    <section id="view-natal" class="tab-view space-y-8">
+        <div class="text-center max-w-2xl mx-auto">
+            <h2 class="font-headline text-3xl md:text-4xl font-bold text-on-surface mb-2 tracking-tight">Kozmik İmzanızı Keşfedin</h2>
+            <p class="text-on-surface-variant font-body text-sm md:text-base italic">Doğum anınızdaki göksel hizalanmaları analiz ederek ruhunuzun haritasına ulaşın.</p>
         </div>
-        <p class="subtitle">Swiss Ephemeris NASA Doğruluğu & Groq LLM Otomatik Model Fallback</p>
-        <div class="nav-links">
-            <a href="/docs" target="_blank" class="nav-btn">Swagger Docs</a>
-            <a href="/redoc" target="_blank" class="nav-btn">ReDoc</a>
-        </div>
-    </header>
 
-    <main class="container">
-        <!-- Input Form Section -->
-        <section class="card input-section">
-            <h2>🔮 Doğum Bilgileri Girişi</h2>
-            <form id="natal-form">
-                <div class="form-group">
-                    <label for="name">Ad / Etiket</label>
-                    <input type="text" id="name" value="Mustafa Kemal Atatürk" required>
-                </div>
+        <!-- Form Card -->
+        <div class="glass-card rounded-3xl p-6 md:p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-headline text-xl font-semibold text-tertiary flex items-center gap-2">
+                    <span class="material-symbols-outlined">auto_fix_high</span> Doğum Bilgileri
+                </h3>
+                <span class="text-xs text-on-surface-variant bg-white/5 px-3 py-1 rounded-full border border-white/5">Swiss Ephemeris</span>
+            </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="year">Yıl</label>
-                        <input type="number" id="year" value="1881" required>
+            <form id="natal-form" class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div class="md:col-span-8">
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Tam İsim / Etiket</label>
+                        <input type="text" id="natal-name" value="Mustafa Kemal Atatürk" class="w-full glass-input rounded-xl px-4 py-3 text-sm" required/>
                     </div>
-                    <div class="form-group">
-                        <label for="month">Ay</label>
-                        <input type="number" id="month" value="5" min="1" max="12" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="day">Gün</label>
-                        <input type="number" id="day" value="19" min="1" max="31" required>
+                    <div class="md:col-span-4">
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Hızlı Şehir Seçimi</label>
+                        <div class="flex gap-2 overflow-x-auto no-scrollbar py-1">
+                            <button type="button" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium glass-card hover:border-secondary transition-colors" data-lat="41.0082" data-lng="28.9784" data-city="Istanbul">İstanbul</button>
+                            <button type="button" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium glass-card hover:border-secondary transition-colors" data-lat="39.9334" data-lng="32.8597" data-city="Ankara">Ankara</button>
+                            <button type="button" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium glass-card hover:border-secondary transition-colors" data-lat="38.4237" data-lng="27.1428" data-city="Izmir">İzmir</button>
+                            <button type="button" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium glass-card hover:border-secondary transition-colors" data-lat="40.6401" data-lng="22.9444" data-city="Thessaloniki">Selanik</button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="hour">Saat (0-23)</label>
-                        <input type="number" id="hour" value="12" min="0" max="23" required>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Yıl</label>
+                        <input type="number" id="natal-year" value="1881" class="w-full glass-input rounded-xl px-3 py-2.5 text-sm text-center" required/>
                     </div>
-                    <div class="form-group">
-                        <label for="minute">Dakika</label>
-                        <input type="number" id="minute" value="0" min="0" max="59" required>
+                    <div>
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Ay</label>
+                        <input type="number" id="natal-month" value="5" min="1" max="12" class="w-full glass-input rounded-xl px-3 py-2.5 text-sm text-center" required/>
                     </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Hızlı Şehir Seçimi (Preset)</label>
-                    <div class="preset-buttons">
-                        <button type="button" class="preset-btn" data-lat="41.0082" data-lng="28.9784" data-city="Istanbul" data-tz="Europe/Istanbul">İstanbul</button>
-                        <button type="button" class="preset-btn" data-lat="39.9334" data-lng="32.8597" data-city="Ankara" data-tz="Europe/Istanbul">Ankara</button>
-                        <button type="button" class="preset-btn" data-lat="38.4237" data-lng="27.1428" data-city="Izmir" data-tz="Europe/Istanbul">İzmir</button>
-                        <button type="button" class="preset-btn" data-lat="40.6401" data-lng="22.9444" data-city="Thessaloniki" data-tz="Europe/Athens">Selanik</button>
+                    <div>
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Gün</label>
+                        <input type="number" id="natal-day" value="19" min="1" max="31" class="w-full glass-input rounded-xl px-3 py-2.5 text-sm text-center" required/>
                     </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="lat">Enlem (Latitude)</label>
-                        <input type="number" step="any" id="lat" value="40.6401" required>
+                    <div>
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Saat</label>
+                        <input type="number" id="natal-hour" value="12" min="0" max="23" class="w-full glass-input rounded-xl px-3 py-2.5 text-sm text-center" required/>
                     </div>
-                    <div class="form-group">
-                        <label for="lng">Boylam (Longitude)</label>
-                        <input type="number" step="any" id="lng" value="22.9444" required>
+                    <div>
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Dakika</label>
+                        <input type="number" id="natal-minute" value="0" min="0" max="59" class="w-full glass-input rounded-xl px-3 py-2.5 text-sm text-center" required/>
                     </div>
                 </div>
 
-                <div class="button-group">
-                    <button type="submit" class="btn btn-primary" id="btn-calc">
-                        <span class="icon">🌌</span> Haritayı Çiz & Hesapla
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Enlem (Latitude)</label>
+                        <input type="number" step="any" id="natal-lat" value="40.6401" class="w-full glass-input rounded-xl px-4 py-2.5 text-sm" required/>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Boylam (Longitude)</label>
+                        <input type="number" step="any" id="natal-lng" value="22.9444" class="w-full glass-input rounded-xl px-4 py-2.5 text-sm" required/>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                    <button type="submit" id="btn-natal-calc" class="flex-1 cosmic-btn text-white py-3.5 rounded-xl font-headline font-bold text-base flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined">auto_graph</span> Haritayı Çiz & Hesapla
                     </button>
-                    <button type="button" class="btn btn-ai" id="btn-ai">
-                        <span class="icon">🤖</span> Groq AI ile Derin Analiz Üret
+                    <button type="button" id="btn-natal-ai" class="flex-1 glass-card hover:border-tertiary text-tertiary py-3.5 rounded-xl font-headline font-bold text-base flex items-center justify-center gap-2 transition-colors">
+                        <span class="material-symbols-outlined">psychology</span> Groq AI ile Derin Analiz
                     </button>
                 </div>
             </form>
-        </section>
+        </div>
 
-        <!-- SVG Output Section -->
-        <section class="card output-section">
-            <h2>🎨 Doğum Haritası Çarkı</h2>
-            <div id="svg-container" class="svg-wrapper">
-                <p class="placeholder-text">Harita çizdirmek için bilgileri girip tıklayın...</p>
+        <!-- Big Three Signs Cards (Dynamic) -->
+        <div id="big-three-container" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="glass-card p-5 rounded-2xl flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-tertiary/10 flex items-center justify-center text-tertiary">
+                    <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">wb_sunny</span>
+                </div>
+                <div>
+                    <span class="text-xs font-semibold text-on-surface-variant uppercase">Güneş Burcu</span>
+                    <h4 id="card-sun-sign" class="font-headline text-lg font-bold text-on-surface">Hesaplanıyor...</h4>
+                    <p id="card-sun-deg" class="text-xs text-on-surface-variant">---</p>
+                </div>
             </div>
-        </section>
-
-        <!-- AI Output Section -->
-        <section class="card ai-section" id="ai-card" style="display: none;">
-            <div class="ai-header">
-                <h2>🤖 Groq LLM Astroloji Analizi</h2>
-                <span class="ai-badge" id="ai-model-badge">Llama-3.3-70B</span>
+            <div class="glass-card p-5 rounded-2xl flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                    <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">dark_mode</span>
+                </div>
+                <div>
+                    <span class="text-xs font-semibold text-on-surface-variant uppercase">Ay Burcu</span>
+                    <h4 id="card-moon-sign" class="font-headline text-lg font-bold text-on-surface">Hesaplanıyor...</h4>
+                    <p id="card-moon-deg" class="text-xs text-on-surface-variant">---</p>
+                </div>
             </div>
-            <div id="ai-output" class="ai-text-box"></div>
-        </section>
-    </main>
+            <div class="glass-card p-5 rounded-2xl flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+                </div>
+                <div>
+                    <span class="text-xs font-semibold text-on-surface-variant uppercase">Yükselen (ASC)</span>
+                    <h4 id="card-asc-sign" class="font-headline text-lg font-bold text-on-surface">Hesaplanıyor...</h4>
+                    <p id="card-asc-deg" class="text-xs text-on-surface-variant">---</p>
+                </div>
+            </div>
+        </div>
 
-    <script src="/static/app.js"></script>
+        <!-- SVG Output Wheel -->
+        <div class="glass-card rounded-3xl p-6 text-center">
+            <h3 class="font-headline text-xl font-semibold text-on-surface mb-4">Doğum Haritası Çarkı</h3>
+            <div id="svg-natal-container" class="svg-wrapper min-h-[300px] flex items-center justify-center">
+                <p class="text-on-surface-variant text-sm italic">Harita çizdirmek için yukarıdaki "Haritayı Çiz & Hesapla" butonuna basın.</p>
+            </div>
+        </div>
+
+        <!-- AI Output Box -->
+        <div id="ai-natal-card" class="glass-card rounded-3xl p-6 md:p-8 hidden">
+            <div class="flex justify-between items-center border-b border-white/10 pb-4 mb-6">
+                <div>
+                    <h3 class="font-headline text-xl font-bold text-on-surface">Derinlemesine Groq AI Analizi</h3>
+                    <p class="text-xs text-on-surface-variant">NASA Swiss Ephemeris verileriyle desteklenen LLM yorumu</p>
+                </div>
+                <span id="ai-model-badge" class="bg-secondary/10 border border-secondary/30 text-secondary text-xs font-semibold px-3 py-1 rounded-full">Llama 3.3 70B</span>
+            </div>
+            <div id="ai-natal-output" class="text-on-surface-variant text-sm md:text-base leading-relaxed space-y-4"></div>
+        </div>
+    </section>
+
+    <!-- ==================== VIEW 2: SYNASTRY / COMPATIBILITY ==================== -->
+    <section id="view-synastry" class="tab-view space-y-8 hidden">
+        <div class="text-center max-w-2xl mx-auto">
+            <h2 class="font-headline text-3xl md:text-4xl font-bold text-on-surface mb-2 tracking-tight">Kozmik Uyum & Synastry</h2>
+            <p class="text-on-surface-variant font-body text-sm md:text-base italic">İki ruhun arasındaki kozmik bağı ve harita açılarının dinamiklerini inceleyin.</p>
+        </div>
+
+        <form id="synastry-form" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Person 1 -->
+                <div class="glass-card rounded-3xl p-6 space-y-4">
+                    <div class="flex items-center gap-3 border-b border-white/10 pb-3">
+                        <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+                        </div>
+                        <h3 class="font-headline text-lg font-bold text-on-surface">Birinci Kişi</h3>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase mb-1">Ad / Etiket</label>
+                        <input type="text" id="syn-name1" value="Kişi A" class="w-full glass-input rounded-xl px-4 py-2.5 text-sm" required/>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="number" id="syn-y1" value="1990" placeholder="Yıl" class="glass-input rounded-xl px-3 py-2 text-sm text-center" required/>
+                        <input type="number" id="syn-m1" value="3" placeholder="Ay" class="glass-input rounded-xl px-3 py-2 text-sm text-center" required/>
+                        <input type="number" id="syn-d1" value="15" placeholder="Gün" class="glass-input rounded-xl px-3 py-2 text-sm text-center" required/>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="syn-h1" value="14" placeholder="Saat" class="glass-input rounded-xl px-3 py-2 text-sm text-center" required/>
+                        <input type="number" id="syn-mi1" value="30" placeholder="Dk" class="glass-input rounded-xl px-3 py-2 text-sm text-center" required/>
+                    </div>
+                </div>
+
+                <!-- Person 2 -->
+                <div class="glass-card rounded-3xl p-6 space-y-4">
+                    <div class="flex items-center gap-3 border-b border-white/10 pb-3">
+                        <div class="w-10 h-10 rounded-full bg-tertiary/10 flex items-center justify-center text-tertiary">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">favorite</span>
+                        </div>
+                        <h3 class="font-headline text-lg font-bold text-on-surface">İkinci Kişi</h3>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase mb-1">Ad / Etiket</label>
+                        <input type="text" id="syn-name2" value="Kişi B" class="w-full glass-input rounded-xl px-4 py-2.5 text-sm" required/>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="number" id="syn-y2" value="1993" placeholder="Yıl" class="glass-input rounded-xl px-3 py-2 text-sm text-center" required/>
+                        <input type="number" id="syn-m2" value="8" placeholder="Ay" class="glass-input rounded-xl px-3 py-2 text-sm text-center" required/>
+                        <input type="number" id="syn-d2" value="22" placeholder="Gün" class="glass-input rounded-xl px-3 py-2 text-sm text-center" required/>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="syn-h2" value="9" placeholder="Saat" class="glass-input rounded-xl px-3 py-2 text-sm text-center" required/>
+                        <input type="number" id="syn-mi2" value="15" placeholder="Dk" class="glass-input rounded-xl px-3 py-2 text-sm text-center" required/>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-center">
+                <button type="submit" id="btn-synastry-calc" class="cosmic-btn text-white px-10 py-4 rounded-xl font-headline font-bold text-lg flex items-center gap-3">
+                    <span class="material-symbols-outlined">favorite</span> Uyum Analizini Başlat
+                </button>
+            </div>
+        </form>
+
+        <!-- Synastry Results Container -->
+        <div id="synastry-results" class="space-y-6 hidden">
+            <div class="glass-card rounded-3xl p-6 text-center">
+                <h3 class="font-headline text-xl font-semibold text-on-surface mb-4">Synastry Çarkı</h3>
+                <div id="svg-synastry-container" class="svg-wrapper min-h-[300px] flex items-center justify-center"></div>
+            </div>
+
+            <div id="ai-synastry-card" class="glass-card rounded-3xl p-6 md:p-8">
+                <div class="flex justify-between items-center border-b border-white/10 pb-4 mb-6">
+                    <h3 class="font-headline text-xl font-bold text-on-surface">Uyum Raporu & Açı Yorumu</h3>
+                    <span id="ai-syn-model-badge" class="bg-tertiary/10 border border-tertiary/30 text-tertiary text-xs font-semibold px-3 py-1 rounded-full">Llama 3.3 70B</span>
+                </div>
+                <div id="ai-synastry-output" class="text-on-surface-variant text-sm md:text-base leading-relaxed space-y-4"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== VIEW 3: COSMIC ARCHIVE ==================== -->
+    <section id="view-archive" class="tab-view space-y-6 hidden">
+        <div class="max-w-2xl">
+            <h2 class="font-headline text-3xl font-bold text-on-surface mb-1">Kozmik Arşiv</h2>
+            <p class="text-on-surface-variant text-sm">Kaydedilmiş tüm natal haritalarınız ve uyum analizleriniz burada saklanır.</p>
+        </div>
+
+        <!-- Controls -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+            <div class="md:col-span-8 relative">
+                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+                <input type="text" id="archive-search" placeholder="İsim veya şehir ara..." class="w-full glass-input rounded-xl py-3 pl-12 pr-4 text-sm"/>
+            </div>
+            <div class="md:col-span-4 flex gap-2">
+                <button type="button" onclick="filterArchive('all')" class="flex-1 glass-card px-4 py-2.5 rounded-xl text-xs font-semibold text-on-surface hover:border-secondary transition-colors">Tümü</button>
+                <button type="button" onclick="clearArchive()" class="glass-card px-4 py-2.5 rounded-xl text-xs font-semibold text-rose-400 hover:border-rose-400 transition-colors">Temizle</button>
+            </div>
+        </div>
+
+        <!-- Archive Grid -->
+        <div id="archive-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Dynamically populated via app.js -->
+        </div>
+    </section>
+
+    <!-- ==================== VIEW 4: WELCOME & 3D ASTROLABE ==================== -->
+    <section id="view-welcome" class="tab-view space-y-8 hidden">
+        <div class="relative flex flex-col items-center text-center space-y-6 py-6">
+            <!-- 3D Astrolabe Canvas Container -->
+            <div id="astrolabe-container" class="w-full h-72 sm:h-96 relative flex items-center justify-center cursor-grab active:cursor-grabbing"></div>
+
+            <div class="space-y-2 max-w-lg mx-auto">
+                <h2 class="font-headline text-3xl sm:text-4xl font-bold text-on-surface">Kozmos Sizi Bekliyor</h2>
+                <p class="text-on-surface-variant text-sm sm:text-base">Kadim astroloji bilgeliği ile modern AI biliminin kesiştiği noktada yıldız haritanızı keşfedin.</p>
+            </div>
+
+            <button type="button" onclick="showTab('natal')" class="cosmic-btn text-white px-8 py-4 rounded-xl font-headline font-bold text-lg flex items-center gap-3">
+                Kozmik Yolculuğunuza Başlayın <span class="material-symbols-outlined">arrow_forward</span>
+            </button>
+
+            <!-- Bento Teasers -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl text-left pt-6">
+                <div class="glass-card p-5 rounded-2xl space-y-2">
+                    <span class="material-symbols-outlined text-tertiary text-3xl">auto_graph</span>
+                    <h4 class="font-headline font-bold text-tertiary text-sm">HASSAS ANALİZ</h4>
+                    <p class="text-xs text-on-surface-variant">Swiss Ephemeris ile tam gezegen ve ev dereceleri.</p>
+                </div>
+                <div class="glass-card p-5 rounded-2xl space-y-2">
+                    <span class="material-symbols-outlined text-secondary text-3xl">psychology</span>
+                    <h4 class="font-headline font-bold text-secondary text-sm">GROQ AI DANIŞMAN</h4>
+                    <p class="text-xs text-on-surface-variant">Llama 3.3 70B modeli ile anında astroloji yorumu.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 backdrop-blur-2xl border-t border-white/5 bg-black/40">
+    <button type="button" onclick="showTab('natal')" id="nav-natal" class="nav-item flex flex-col items-center gap-1 text-secondary transition-all">
+        <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">explore</span>
+        <span class="text-[11px] font-semibold">Harita</span>
+    </button>
+    <button type="button" onclick="showTab('synastry')" id="nav-synastry" class="nav-item flex flex-col items-center gap-1 text-on-surface/50 hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined text-xl">star_half</span>
+        <span class="text-[11px] font-semibold">Uyum</span>
+    </button>
+    <button type="button" onclick="showTab('archive')" id="nav-archive" class="nav-item flex flex-col items-center gap-1 text-on-surface/50 hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined text-xl">inventory_2</span>
+        <span class="text-[11px] font-semibold">Arşiv</span>
+    </button>
+    <button type="button" onclick="showTab('welcome')" id="nav-welcome" class="nav-item flex flex-col items-center gap-1 text-on-surface/50 hover:text-on-surface transition-all">
+        <span class="material-symbols-outlined text-xl">person</span>
+        <span class="text-[11px] font-semibold">Profil</span>
+    </button>
+</nav>
+
+<!-- Main App Script -->
+<script src="/static/app.js"></script>
+
 </body>
 </html>
