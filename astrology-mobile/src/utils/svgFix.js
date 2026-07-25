@@ -1,11 +1,10 @@
-// Cleans CSS var(...) references from Kerykeion SVG output for React Native SVG compatibility.
-// Handles both single-line var(--name) and multi-line var(\n  --name\n) patterns.
+// Cleans CSS var(...) references and crops viewBox for Kerykeion SVG output.
+// Crops out cluttered side text, elements percentages, and aspect matrix tables.
 
 export function cleanSvgForMobile(svgStr) {
   if (!svgStr) return '';
 
-  // Step 1: Normalize multi-line var() into single-line var()
-  // Kerykeion sometimes outputs: var(\n        --kerykeion-chart-color-fire-percentage\n    )
+  // Normalize multi-line var()
   let cleaned = svgStr.replace(/var\(\s*(--[a-z0-9-_]+)\s*\)/gi, 'var($1)');
 
   const colorMap = {
@@ -41,17 +40,10 @@ export function cleanSvgForMobile(svgStr) {
     'var(--kerykeion-chart-color-trine)': '#3B82F6',
     'var(--kerykeion-chart-color-square)': '#F97316',
     'var(--kerykeion-chart-color-sextile)': '#8B5CF6',
-    'var(--kerykeion-chart-color-quintile)': '#A78BFA',
-    'var(--kerykeion-chart-color-semi-sextile)': '#6EE7B7',
-    'var(--kerykeion-chart-color-semi-square)': '#FBBF24',
-    'var(--kerykeion-chart-color-sesquiquadrate)': '#FB923C',
-    'var(--kerykeion-chart-color-biquintile)': '#C4B5FD',
-    'var(--kerykeion-chart-color-quincunx)': '#F9A8D4',
     'var(--kerykeion-chart-color-house-number)': '#94A3B8',
     'var(--kerykeion-chart-color-houses-radix-line)': '#475569',
   };
 
-  // Extract inline style definitions
   const styleMatches = [...cleaned.matchAll(/(--kerykeion-chart-color-[a-z0-9-_]+)\s*:\s*([^;\}]+);/g)];
   for (const match of styleMatches) {
     colorMap[`var(${match[1]})`] = match[2].trim();
@@ -61,8 +53,27 @@ export function cleanSvgForMobile(svgStr) {
     cleaned = cleaned.replaceAll(varName, colorVal);
   }
 
-  // Catch any remaining var(--...)
   cleaned = cleaned.replace(/var\(--[a-z0-9-_]+\)/gi, '#94A3B8');
+
+  // Crop viewBox to focus 100% on the central astrological wheel
+  cleaned = cleaned.replace(/viewBox=['"][^'"]*['"]/gi, "viewBox='95 35 490 490'");
+
+  // Inject CSS to hide side text nodes & white paper backgrounds
+  const cssHide = `
+  <style>
+    g[kr\\:node="Top_Left_Text"],
+    g[kr\\:node="Elements_Percentages"],
+    g[kr\\:node="Qualities_Percentages"],
+    g[kr\\:node="Bottom_Left_Text"],
+    g[kr\\:node="Houses_And_Planets_Grid"],
+    g[kr\\:node="Aspect_Grid"],
+    g[kr\\:node="Main_Planet_Grid"],
+    text[kr\\:node="Chart_Title"] { display: none !important; }
+    rect[style*="fill:#ffffff"], rect[style*="fill: #ffffff"], rect[fill="#ffffff"] { fill: transparent !important; }
+  </style>
+  `;
+
+  cleaned = cleaned.replace('</svg>', cssHide + '</svg>');
 
   return cleaned;
 }

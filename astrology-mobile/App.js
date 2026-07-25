@@ -82,10 +82,63 @@ function NativeTabBar({ activeTab, setActiveTab }) {
   );
 }
 
+/* ==================== SVG CLEAN & CROP HELPER ==================== */
+function cleanAndCropSvgForWeb(svgStr) {
+  if (!svgStr) return '';
+  let cleaned = svgStr.replace(/var\(\s*(--[a-z0-9-_]+)\s*\)/gi, 'var($1)');
+
+  const colorMap = {
+    'var(--kerykeion-chart-color-paper-0)': '#0A0A1E',
+    'var(--kerykeion-chart-color-paper-1)': '#141432',
+    'var(--kerykeion-chart-color-sun)': '#FFD700',
+    'var(--kerykeion-chart-color-moon)': '#F0F4F8',
+    'var(--kerykeion-chart-color-mercury)': '#A78BFA',
+    'var(--kerykeion-chart-color-venus)': '#F472B6',
+    'var(--kerykeion-chart-color-mars)': '#EF4444',
+    'var(--kerykeion-chart-color-jupiter)': '#F97316',
+    'var(--kerykeion-chart-color-saturn)': '#EAB308',
+    'var(--kerykeion-chart-color-uranus)': '#14B8A6',
+    'var(--kerykeion-chart-color-neptune)': '#3B82F6',
+    'var(--kerykeion-chart-color-pluto)': '#8B5CF6',
+  };
+  for (const [v, c] of Object.entries(colorMap)) { cleaned = cleaned.replaceAll(v, c); }
+  cleaned = cleaned.replace(/var\(--[a-z0-9-_]+\)/gi, '#94A3B8');
+
+  // Crop viewBox to focus 100% on the central 360-degree astrological wheel
+  cleaned = cleaned.replace(/viewBox=['"][^'"]*['"]/gi, "viewBox='95 35 490 490'");
+
+  const cssHide = `
+  <style>
+    g[kr\\:node="Top_Left_Text"],
+    g[kr\\:node="Elements_Percentages"],
+    g[kr\\:node="Qualities_Percentages"],
+    g[kr\\:node="Bottom_Left_Text"],
+    g[kr\\:node="Houses_And_Planets_Grid"],
+    g[kr\\:node="Aspect_Grid"],
+    g[kr\\:node="Main_Planet_Grid"],
+    text[kr\\:node="Chart_Title"] { display: none !important; }
+    rect[style*="fill:#ffffff"], rect[style*="fill: #ffffff"], rect[fill="#ffffff"] { fill: transparent !important; }
+  </style>
+  `;
+  return cleaned.replace('</svg>', cssHide + '</svg>');
+}
+
+/* ==================== MARKDOWN PARSER HELPER ==================== */
+function parseMarkdownToSections(mdStr) {
+  if (!mdStr) return [];
+  const rawSections = mdStr.split(/(?=###|\n##\s)/g);
+  return rawSections.map((sec, i) => {
+    const lines = sec.trim().split('\n');
+    let title = lines[0].replace(/^#+\s*/, '').replace(/^[^\w\sğüşıöçĞÜŞİÖÇ]+/, '').trim();
+    if (!title) title = `Kozmik Bölüm ${i + 1}`;
+    const body = lines.slice(1).join('\n').trim() || sec.trim();
+    return { id: i, title, body };
+  });
+}
+
 /* ==================== WEB EPIC UI COMPONENT ==================== */
 function WebEpicUI({ activeTab, setActiveTab, userEmail, setUserEmail }) {
   useEffect(() => {
-    // 1. WebGL Cosmic Shader Background
     const canvas = document.getElementById('shader-bg') || document.createElement('canvas');
     canvas.id = 'shader-bg';
     if (!document.body.contains(canvas)) document.body.prepend(canvas);
@@ -149,16 +202,12 @@ function WebEpicUI({ activeTab, setActiveTab, userEmail, setUserEmail }) {
       };
       reqId = requestAnimationFrame(render);
 
-      return () => {
-        cancelAnimationFrame(reqId);
-        window.removeEventListener('resize', resize);
-      };
+      return () => { cancelAnimationFrame(reqId); window.removeEventListener('resize', resize); };
     }
   }, []);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#0B0D17', color: '#e2e2e2' }}>
-      {/* Top App Bar */}
       <header className="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 backdrop-blur-xl border-b border-white/5 bg-black/20">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('welcome')}>
           <span className="material-symbols-outlined text-secondary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
@@ -171,7 +220,6 @@ function WebEpicUI({ activeTab, setActiveTab, userEmail, setUserEmail }) {
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="relative z-10 pt-24 pb-32 px-4 md:px-8 max-w-6xl mx-auto w-full flex-1">
         {activeTab === 'welcome' && <WebWelcomeView onStart={() => setActiveTab('natal')} onLoginSuccess={(e) => { setUserEmail(e); setActiveTab('natal'); }} />}
         {activeTab === 'natal' && <WebNatalView />}
@@ -179,7 +227,6 @@ function WebEpicUI({ activeTab, setActiveTab, userEmail, setUserEmail }) {
         {activeTab === 'saved' && <WebArchiveView onNewAnalysis={() => setActiveTab('natal')} />}
       </main>
 
-      {/* Bottom Navigation Bar */}
       <nav className="fixed bottom-0 w-full z-50 flex justify-around items-center px-6 pb-6 pt-3 backdrop-blur-3xl border-t border-white/5 bg-black/40">
         <button onClick={() => setActiveTab('natal')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'natal' ? 'text-secondary font-bold' : 'text-on-surface/60 hover:text-on-surface'}`}>
           <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: activeTab === 'natal' ? "'FILL' 1" : "'FILL' 0" }}>explore</span>
@@ -202,7 +249,7 @@ function WebEpicUI({ activeTab, setActiveTab, userEmail, setUserEmail }) {
   );
 }
 
-/* ==================== WEB VIEWS (EPIC MOCKUP MATCHING) ==================== */
+/* ==================== WEB WELCOME VIEW ==================== */
 function WebWelcomeView({ onStart, onLoginSuccess }) {
   const [showLogin, setShowLogin] = useState(false);
   const [email, setEmail] = useState('');
@@ -265,7 +312,7 @@ function WebWelcomeView({ onStart, onLoginSuccess }) {
           </p>
 
           <button onClick={onStart} className="w-full py-5 bg-secondary-container text-secondary font-headline font-bold text-xl rounded-xl shadow-[0_0_30px_rgba(98,37,153,0.5)] hover:shadow-[0_0_40px_rgba(98,37,153,0.7)] hover:scale-[1.02] active:scale-95 transition-all mb-4 border border-white/10 flex items-center justify-center gap-3">
-            Kozmik Yolculuğunuza Başlayın <span class="material-symbols-outlined">arrow_forward</span>
+            Kozmik Yolculuğunuza Başlayın <span className="material-symbols-outlined">arrow_forward</span>
           </button>
 
           <button onClick={() => setShowLogin(true)} className="text-on-surface-variant hover:text-tertiary transition-colors text-sm mb-10">
@@ -313,6 +360,7 @@ function WebWelcomeView({ onStart, onLoginSuccess }) {
   );
 }
 
+/* ==================== WEB NATAL VIEW ==================== */
 function WebNatalView() {
   const [name, setName] = useState('Mustafa Kemal Atatürk');
   const [year, setYear] = useState('1881');
@@ -324,25 +372,40 @@ function WebNatalView() {
   const [lng, setLng] = useState('22.9444');
   const [loading, setLoading] = useState(false);
   const [svg, setSvg] = useState(null);
-  const [aiReport, setAiReport] = useState(null);
+  const [natalData, setNatalData] = useState(null);
+  const [aiSections, setAiSections] = useState([]);
   const [aiModel, setAiModel] = useState('');
+  const [openAccordion, setOpenAccordion] = useState(0);
 
   const calculate = async (e) => {
     if (e) e.preventDefault();
-    setLoading(true); setSvg(null); setAiReport(null);
+    setLoading(true); setSvg(null); setNatalData(null); setAiSections([]);
     const payload = { name, year: +year, month: +month, day: +day, hour: +hour, minute: +minute, city: 'PresetCity', nation: 'TR', lat: +lat, lng: +lng, tz_str: 'Europe/Istanbul', house_system: 'P' };
     try {
-      const [svgRes, aiRes] = await Promise.all([
+      const [jsonRes, svgRes, aiRes] = await Promise.all([
+        fetch('https://astrology-k5kd.onrender.com/api/v1/natal-chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
         fetch('https://astrology-k5kd.onrender.com/api/v1/natal-chart/svg', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }),
         fetch('https://astrology-k5kd.onrender.com/api/v1/ai-interpretation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       ]);
+      const json = await jsonRes.json();
       const svgText = await svgRes.text();
       const aiData = await aiRes.json();
-      setSvg(svgText);
-      if (aiData.status === 'success') { setAiReport(aiData.ai_interpretation); setAiModel(aiData.model_used); }
+
+      setNatalData(json.data);
+      setSvg(cleanAndCropSvgForWeb(svgText));
+      if (aiData.status === 'success') {
+        setAiSections(parseMarkdownToSections(aiData.ai_interpretation));
+        setAiModel(aiData.model_used);
+      }
     } catch (err) { alert('Hata: ' + err.message); }
     finally { setLoading(false); }
   };
+
+  const sunSign = natalData?.sun?.sign || 'Boğa / Aslan';
+  const sunPos = natalData?.sun?.position ? `${natalData.sun.position.toFixed(1)}°` : '';
+  const moonSign = natalData?.moon?.sign || 'Akrep / Balık';
+  const moonPos = natalData?.moon?.position ? `${natalData.moon.position.toFixed(1)}°` : '';
+  const ascSign = natalData?.first_house?.sign || 'Oğlak / Terazi';
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
@@ -359,7 +422,7 @@ function WebNatalView() {
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-on-surface focus:border-secondary/50" required/>
             </div>
             <div className="md:col-span-4">
-              <label class="block text-xs font-bold text-primary/80 uppercase mb-1">Hızlı Şehir</label>
+              <label className="block text-xs font-bold text-primary/80 uppercase mb-1">Hızlı Şehir</label>
               <div className="flex gap-2 py-1">
                 <button type="button" onClick={() => { setLat('41.0082'); setLng('28.9784'); }} className="px-3 py-1.5 glass-card rounded-lg text-xs font-semibold hover:border-secondary">İstanbul</button>
                 <button type="button" onClick={() => { setLat('39.9334'); setLng('32.8597'); }} className="px-3 py-1.5 glass-card rounded-lg text-xs font-semibold hover:border-secondary">Ankara</button>
@@ -382,59 +445,87 @@ function WebNatalView() {
         </form>
       </div>
 
-      {/* Big Three Highlights */}
+      {/* Dynamic Big Three Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="glass-card p-6 rounded-2xl flex flex-col items-center text-center">
           <div className="w-12 h-12 bg-secondary/20 rounded-full flex items-center justify-center mb-3">
             <span className="material-symbols-outlined text-secondary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>wb_sunny</span>
           </div>
           <span className="text-xs font-semibold text-secondary uppercase mb-1">Güneş Burcu</span>
-          <h3 className="font-headline text-2xl font-bold text-on-surface">Boğa / Aslan</h3>
-          <p className="text-xs text-on-surface-variant mt-1">Özgüven, yaratıcılık ve kararlılık potansiyeli.</p>
+          <h3 className="font-headline text-2xl font-bold text-on-surface">{sunSign} {sunPos}</h3>
+          <p className="text-xs text-on-surface-variant mt-1">Özgüven, temel karakter ve liderlik potansiyeli.</p>
         </div>
         <div className="glass-card p-6 rounded-2xl flex flex-col items-center text-center">
           <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mb-3">
             <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>dark_mode</span>
           </div>
           <span className="text-xs font-semibold text-primary uppercase mb-1">Ay Burcu</span>
-          <h3 className="font-headline text-2xl font-bold text-on-surface">Akrep / Balık</h3>
-          <p className="text-xs text-on-surface-variant mt-1">Derin duygusal yoğunluk ve sezgisel güç.</p>
+          <h3 className="font-headline text-2xl font-bold text-on-surface">{moonSign} {moonPos}</h3>
+          <p className="text-xs text-on-surface-variant mt-1">Derin duygusal dünya ve bilinçdışı sezgiler.</p>
         </div>
         <div className="glass-card p-6 rounded-2xl flex flex-col items-center text-center">
           <div className="w-12 h-12 bg-tertiary/20 rounded-full flex items-center justify-center mb-3">
             <span className="material-symbols-outlined text-tertiary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>north_east</span>
           </div>
           <span className="text-xs font-semibold text-tertiary uppercase mb-1">Yükselen (ASC)</span>
-          <h3 className="font-headline text-2xl font-bold text-on-surface">Oğlak / Terazi</h3>
-          <p className="text-xs text-on-surface-variant mt-1">Disiplinli dış görünüş ve diplomasi yeteneği.</p>
+          <h3 className="font-headline text-2xl font-bold text-on-surface">{ascSign}</h3>
+          <p className="text-xs text-on-surface-variant mt-1">Dış dünya maskesi, fiziksel beden ve ilk izlenim.</p>
         </div>
       </div>
 
-      {/* SVG Chart Output */}
+      {/* High-Definition Cleaned & Cropped SVG Chart Wheel */}
       {svg && (
-        <div className="glass-card rounded-3xl p-6 text-center">
-          <h3 className="font-headline text-xl font-bold text-on-surface mb-4">Doğum Haritası Çarkı</h3>
-          <div dangerouslySetInnerHTML={{ __html: svg }} className="flex justify-center" />
+        <div className="glass-card rounded-3xl p-6 text-center space-y-4">
+          <div className="flex justify-between items-center px-2">
+            <h3 className="font-headline text-xl font-bold text-on-surface">Doğum Haritası Çarkı</h3>
+            <span className="text-xs font-bold text-tertiary bg-tertiary/10 border border-tertiary/30 px-3 py-1 rounded-full">360° İsviçre Efemerisi</span>
+          </div>
+          <div className="flex justify-center items-center w-full overflow-hidden py-2" dangerouslySetInnerHTML={{ __html: svg }} />
         </div>
       )}
 
-      {/* AI Report Output */}
-      {aiReport && (
-        <div className="glass-card rounded-3xl p-6 md:p-8 space-y-4">
-          <div className="flex justify-between items-center border-b border-white/10 pb-4">
-            <h3 className="font-headline text-xl font-bold text-on-surface">Derinlemesine Groq AI Analizi</h3>
-            <span className="bg-secondary/10 border border-secondary/30 text-secondary text-xs font-bold px-3 py-1 rounded-full">{aiModel || 'Llama 3.3 70B'}</span>
+      {/* Styled Accordion Groq AI Report */}
+      {aiSections.length > 0 && (
+        <div className="glass-card rounded-3xl overflow-hidden space-y-0">
+          <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+            <div>
+              <h3 className="font-headline text-xl font-bold text-on-surface">Derinlemesine Groq AI Analizi</h3>
+              <p className="text-xs text-on-surface-variant italic">Göksel konumların bütünsel psikolojik yorumu</p>
+            </div>
+            <span className="bg-secondary/10 border border-secondary/30 text-secondary text-xs font-bold px-3.5 py-1.5 rounded-full">{aiModel || 'Llama 3.3 70B'}</span>
           </div>
-          <div className="text-on-surface-variant text-sm md:text-base leading-relaxed whitespace-pre-line">{aiReport}</div>
+
+          <div className="divide-y divide-white/5">
+            {aiSections.map((sec, idx) => {
+              const isOpen = openAccordion === idx;
+              return (
+                <div key={sec.id} className="accordion-item">
+                  <button onClick={() => setOpenAccordion(isOpen ? -1 : idx)} className="w-full flex justify-between items-center p-6 hover:bg-white/5 transition-all text-left group">
+                    <span className="font-body text-base font-semibold text-on-surface group-hover:text-secondary transition-colors flex items-center gap-4">
+                      <span className="w-7 h-7 rounded-full border border-secondary/50 flex items-center justify-center text-xs font-bold text-secondary">0{idx + 1}</span>
+                      {sec.title}
+                    </span>
+                    <span className={`material-symbols-outlined transition-transform duration-300 text-on-surface-variant ${isOpen ? 'rotate-180 text-secondary' : ''}`}>expand_more</span>
+                  </button>
+                  {isOpen && (
+                    <div className="px-6 pb-6 pt-2 text-on-surface-variant/90 text-sm leading-relaxed ml-11 border-l-2 border-secondary/30 whitespace-pre-line">
+                      {sec.body}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
+/* ==================== WEB SYNASTRY VIEW ==================== */
 function WebSynastryView() {
   const [loading, setLoading] = useState(false);
-  const [score, setScore] = useState(82);
+  const [score, setScore] = useState(84);
   const [svg, setSvg] = useState(null);
 
   const calc = async () => {
@@ -446,7 +537,7 @@ function WebSynastryView() {
     try {
       const res = await fetch('https://astrology-k5kd.onrender.com/api/v1/synastry-chart/svg', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const svgText = await res.text();
-      setSvg(svgText); setScore(84);
+      setSvg(cleanAndCropSvgForWeb(svgText)); setScore(84);
     } catch (e) { alert('Hata: ' + e.message); }
     finally { setLoading(false); }
   };
@@ -504,7 +595,7 @@ function WebSynastryView() {
       )}
 
       {svg && (
-        <div className="glass-card rounded-3xl p-6 text-center">
+        <div className="glass-card rounded-3xl p-6 text-center space-y-4">
           <h3 className="font-headline text-xl font-bold text-on-surface mb-4">Synastry Uyum Çarkı</h3>
           <div dangerouslySetInnerHTML={{ __html: svg }} className="flex justify-center" />
         </div>
@@ -513,6 +604,7 @@ function WebSynastryView() {
   );
 }
 
+/* ==================== WEB ARCHIVE VIEW ==================== */
 function WebArchiveView({ onNewAnalysis }) {
   return (
     <div className="space-y-8">
@@ -536,7 +628,7 @@ function WebArchiveView({ onNewAnalysis }) {
           <p className="text-xs text-on-surface-variant">14 May 1992 • 04:30</p>
           <div className="flex gap-2">
             <span className="px-3 py-1 rounded-full bg-white/5 text-xs text-on-surface-variant">Boğa</span>
-            <span class="px-3 py-1 rounded-full bg-white/5 text-xs text-on-surface-variant">Yükselen Akrep</span>
+            <span className="px-3 py-1 rounded-full bg-white/5 text-xs text-on-surface-variant">Yükselen Akrep</span>
           </div>
         </div>
 

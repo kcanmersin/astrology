@@ -90,7 +90,7 @@ class AstrologyService:
 
     @staticmethod
     def _clean_svg_for_mobile(svg_str: str) -> str:
-        """Replaces CSS var(...) references with explicit hex colors for React Native SVG mobile rendering."""
+        """Replaces CSS var(...) references and crops viewBox to render a large, clean, dark-mode astrological wheel."""
         color_map = {
             'var(--kerykeion-chart-color-paper-0)': '#0A0A1E',
             'var(--kerykeion-chart-color-paper-1)': '#141432',
@@ -136,6 +136,25 @@ class AstrologyService:
 
         # Fallback any remaining var(...) expressions
         svg_str = re.sub(r'var\(--[a-z0-9-_]+\)', '#94A3B8', svg_str)
+
+        # Crop viewBox to focus exclusively on the central 360-degree astrological wheel
+        svg_str = re.sub(r"viewBox=['\"][^'\"]*['\"]", "viewBox='95 35 490 490'", svg_str)
+
+        # Hide cluttered side text, elements percentages & aspect grid tables
+        css_hide = """
+        <style>
+          g[kr\\:node="Top_Left_Text"],
+          g[kr\\:node="Elements_Percentages"],
+          g[kr\\:node="Qualities_Percentages"],
+          g[kr\\:node="Bottom_Left_Text"],
+          g[kr\\:node="Houses_And_Planets_Grid"],
+          g[kr\\:node="Aspect_Grid"],
+          g[kr\\:node="Main_Planet_Grid"],
+          text[kr\\:node="Chart_Title"] { display: none !important; }
+          rect[style*="fill:#ffffff"], rect[style*="fill: #ffffff"], rect[fill="#ffffff"] { fill: transparent !important; }
+        </style>
+        """
+        svg_str = svg_str.replace('</svg>', css_hide + '</svg>')
         return svg_str
 
 
