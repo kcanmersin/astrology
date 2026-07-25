@@ -40,7 +40,7 @@ function TabBar({ activeTab, setActiveTab }) {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('natal');
+  const [activeTab, setActiveTab] = useState('welcome');
   const [userEmail, setUserEmail] = useState(null);
 
   const handleStart = () => {
